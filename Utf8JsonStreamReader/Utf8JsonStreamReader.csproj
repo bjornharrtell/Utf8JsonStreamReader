@@ -5,8 +5,14 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/bjornharrtell/Utf8JsonStreamReader</RepositoryUrl>
+    <Description>A streaming JSON parser based on System.Text.Json.Utf8JsonReader</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../LICENSE" Pack="true" PackagePath=""/>
+</ItemGroup>
 
 </Project>
