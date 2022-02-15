@@ -12,15 +12,17 @@ namespace Wololo.Text.Json
 
     public sealed class Utf8JsonStreamTokenEnumerator : IAsyncEnumerable<JsonResult>
     {
-        private ReadOnlySequence<byte> buffer;
-        private int offset = 0;
         private readonly int bufferSize;
         private readonly PipeReader pipeReader;
+        private readonly List<JsonResult> resultBuffer = new(1024 * 8);
+
         private JsonReaderState jsonReaderState = new();
+        private ReadOnlySequence<byte> buffer;
+        private int offset = 0;
 
         public Utf8JsonStreamTokenEnumerator(Stream stream, int bufferSize = -1, bool leaveOpen = false)
         {
-            this.bufferSize = bufferSize == -1 ? 1024 * 16 : bufferSize;
+            this.bufferSize = bufferSize == -1 ? 1024 * 8 : bufferSize;
             pipeReader = PipeReader.Create(stream, new StreamPipeReaderOptions(null, this.bufferSize, this.bufferSize, leaveOpen));
         }
 
@@ -36,26 +38,25 @@ namespace Wololo.Text.Json
                 offset = 0;
                 if (readResult.IsCompleted)
                     done = true;
-                var tokens = ReadTokens();
-                foreach (var token in tokens)
-                    yield return token;
+                ReadTokens();
+                foreach (var result in resultBuffer)
+                    yield return result;
             }
         }
 
-        private List<JsonResult> ReadTokens()
+        private void ReadTokens()
         {
-            var results = new List<JsonResult>();
+            resultBuffer.Clear();
             var reader = new Utf8JsonReader(buffer, false, jsonReaderState);
             while (reader.Read())
             {
                 jsonReaderState = reader.CurrentState;
-                results.Add(new JsonResult() {
+                resultBuffer.Add(new JsonResult() {
                     TokenType = reader.TokenType,
                     Value = Utf8JsonHelpers.GetValue(reader)
                 });
             }
             offset = (int) reader.BytesConsumed;
-            return results;
         }
     }
 }

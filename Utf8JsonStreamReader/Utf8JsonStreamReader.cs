@@ -25,7 +25,6 @@ namespace Wololo.Text.Json
 
         public async Task<bool> ReadAsync(CancellationToken cancellationToken = default)
         {
-            // TODO: possibly go straight to read from pipe if remaining buffer length is smaller than set threshold
             if (TokenType == JsonTokenType.None || !Read())
             {
                 if (bytesConsumed > 0)
