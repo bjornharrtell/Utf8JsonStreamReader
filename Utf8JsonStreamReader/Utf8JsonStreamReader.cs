@@ -46,22 +46,31 @@ namespace Wololo.Text.Json
             return Encoding.UTF8.GetString(reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan);
         }
 
+        private static object GetDecimal(string str)
+        {
+            var value = double.Parse(str);
+            if (value > float.MinValue && value < float.MaxValue)
+                return (float) value;
+            return value;
+        }
+
+        private static object GetInteger(string str)
+        {
+            var value = long.Parse(str);
+            if (value > short.MinValue && value < short.MaxValue)
+                return (short) value;
+            if (value > int.MinValue && value < int.MaxValue)
+                return (int) value;
+            return value;
+        }
+
         private static object GetNumber(Utf8JsonReader reader)
         {
             var str = GetString(reader);
             if (str.Contains('.'))
-            {
-                return double.Parse(str);
-            }
+                return GetDecimal(str);
             else
-            {
-                var value = long.Parse(str);
-                if (value > short.MinValue && value < short.MaxValue)
-                    return (short) value;
-                if (value > int.MinValue && value < int.MaxValue)
-                    return (int) value;
-                return value;
-            }
+                return GetInteger(str);
         }
 
         private object? GetValue(Utf8JsonReader reader)
