@@ -12,6 +12,7 @@ public class Utf8JsonStreamReaderTests
     readonly string json = JsonSerializer.Serialize(
         new {
             Id = 2,
+            NegativeId = -23,
             TimeStamp = "2012-10-21T00:00:00+05:30",
             Status = false,
             Num = 13434934.23233434
@@ -34,7 +35,13 @@ public class Utf8JsonStreamReaderTests
         Assert.AreEqual("Id", reader.Value);
         await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
-        Assert.AreEqual((byte) 2, reader.Value);
+        Assert.AreEqual((short) 2, reader.Value);
+        await reader.ReadAsync(CancellationToken.None);
+        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
+        Assert.AreEqual("NegativeId", reader.Value);
+        await reader.ReadAsync(CancellationToken.None);
+        Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
+        Assert.AreEqual((short) -23, reader.Value);
         await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
         Assert.AreEqual("TimeStamp", reader.Value);

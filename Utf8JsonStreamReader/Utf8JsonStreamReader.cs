@@ -55,14 +55,12 @@ namespace Wololo.Text.Json
             }
             else
             {
-                if (str.Length < 3)
-                    return byte.Parse(str);
-                else if (str.Length < 5)
-                    return short.Parse(str);
-                else if (str.Length < 10)
-                    return int.Parse(str);
-                else
-                    return long.Parse(str);
+                var value = long.Parse(str);
+                if (value > short.MinValue && value < short.MaxValue)
+                    return (short) value;
+                if (value > int.MinValue && value < int.MaxValue)
+                    return (int) value;
+                return value;
             }
         }
 
