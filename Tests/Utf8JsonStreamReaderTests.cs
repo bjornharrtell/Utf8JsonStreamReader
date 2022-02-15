@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Wololo.Text.Json;
@@ -13,35 +14,38 @@ public class Utf8JsonStreamReaderTests
             Id = 2,
             TimeStamp = "2012-10-21T00:00:00+05:30",
             Status = false
+        },
+        new JsonSerializerOptions() {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = false
         }
     );
 
     [TestMethod]
-    public void BasicTest()
+    public async Task Basic2Test()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        var reader = new Utf8JsonStreamReader(stream, 10);
-        reader.Read();
+        var reader = new Utf8JsonStreamReader(stream);
+        await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
-        reader.Read();
+        await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("Id", reader.GetString());
-        reader.Read();
+        Assert.AreEqual("Id", reader.Value);
+        await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
-        Assert.AreEqual(2, reader.GetInt32());
-        reader.Read();
+        Assert.AreEqual((byte) 2, reader.Value);
+        await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("TimeStamp", reader.GetString());
-        reader.Read();
+        Assert.AreEqual("TimeStamp", reader.Value);
+        await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.String, reader.TokenType);
-        Assert.AreEqual(DateTimeOffset.Parse("2012-10-21T00:00:00+05:30"), reader.GetDateTimeOffset());
-        reader.Read();
+        Assert.AreEqual("2012-10-21T00:00:00+05:30", reader.Value);
+        await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("Status", reader.GetString());
-        reader.Read();
+        Assert.AreEqual("Status", reader.Value);
+        await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.False, reader.TokenType);
-        reader.Read();
+        await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
-        Assert.AreEqual(false, reader.Read());
     }
 }
