@@ -13,7 +13,8 @@ public class Utf8JsonStreamReaderTests
         new {
             Id = 2,
             TimeStamp = "2012-10-21T00:00:00+05:30",
-            Status = false
+            Status = false,
+            Num = 13434934.23233434
         },
         new JsonSerializerOptions() {
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -45,6 +46,11 @@ public class Utf8JsonStreamReaderTests
         Assert.AreEqual("Status", reader.Value);
         await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.False, reader.TokenType);
+        await reader.ReadAsync(CancellationToken.None);
+        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
+        Assert.AreEqual("Num", reader.Value);
+        await reader.ReadAsync(CancellationToken.None);
+        Assert.AreEqual((double) 13434934.23233434, reader.Value);
         await reader.ReadAsync(CancellationToken.None);
         Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
     }

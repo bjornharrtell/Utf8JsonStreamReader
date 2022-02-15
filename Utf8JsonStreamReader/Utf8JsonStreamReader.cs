@@ -49,14 +49,21 @@ namespace Wololo.Text.Json
         private static object GetNumber(Utf8JsonReader reader)
         {
             var str = GetString(reader);
-            if (str.Length < 3)
-                return byte.Parse(str);
-            else if (str.Length < 5)
-                return short.Parse(str);
-            else if (str.Length < 10)
-                return int.Parse(str);
+            if (str.Contains('.'))
+            {
+                return double.Parse(str);
+            }
             else
-                return long.Parse(str);
+            {
+                if (str.Length < 3)
+                    return byte.Parse(str);
+                else if (str.Length < 5)
+                    return short.Parse(str);
+                else if (str.Length < 10)
+                    return int.Parse(str);
+                else
+                    return long.Parse(str);
+            }
         }
 
         private object? GetValue(Utf8JsonReader reader)
