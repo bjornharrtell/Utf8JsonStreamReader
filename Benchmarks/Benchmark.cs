@@ -69,7 +69,7 @@ namespace Benchmarks
             }
 
             [Benchmark]
-            public async Task TraverseJsonTextReader()
+            public async Task TraverseNewtonsoftJsonTextReader()
             {
                 var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
                 var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));
