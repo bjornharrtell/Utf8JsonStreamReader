@@ -23,7 +23,7 @@ public class Utf8JsonStreamReaderTests
     );
 
     [TestMethod]
-    public async Task Basic2Test()
+    public async Task BasicTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
         var reader = new Utf8JsonStreamReader(stream);

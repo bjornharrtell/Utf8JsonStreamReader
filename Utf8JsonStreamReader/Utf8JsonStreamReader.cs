@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace Wololo.Text.Json
 {
-    public class Utf8JsonStreamReader
+    public class Utf8JsonStreamReader : IDisposable
     {
         private readonly int bufferSize;
         private readonly PipeReader pipeReader;
@@ -88,6 +88,11 @@ namespace Wololo.Text.Json
             bytesConsumed += (int) reader.BytesConsumed;
             jsonReaderState = reader.CurrentState;
             return true;
+        }
+
+        public void Dispose()
+        {
+            pipeReader.Complete();
         }
     }
 }
