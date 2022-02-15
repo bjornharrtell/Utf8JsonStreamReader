@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.IO.Pipelines;
-using System.Text;
 using System.Text.Json;
 
 namespace Wololo.Text.Json
@@ -24,7 +23,7 @@ namespace Wololo.Text.Json
             pipeReader = PipeReader.Create(stream, new StreamPipeReaderOptions(null, this.bufferSize, this.bufferSize, leaveOpen));
         }
 
-        public async Task<bool> ReadAsync(CancellationToken cancellationToken)
+        public async Task<bool> ReadAsync(CancellationToken cancellationToken = default)
         {
             // TODO: possibly go straight to read from pipe if remaining buffer length is smaller than set threshold
             if (TokenType == JsonTokenType.None || !Read())
@@ -41,56 +40,13 @@ namespace Wololo.Text.Json
             return !(endOfStream && bytesConsumed == buffer.Length);
         }
 
-        private static string GetString(Utf8JsonReader reader)
-        {
-            return Encoding.UTF8.GetString(reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan);
-        }
-
-        private static object GetDecimal(string str)
-        {
-            var value = double.Parse(str);
-            // TODO: check if value can be losslessly converted to float?
-            return value;
-        }
-
-        private static object GetInteger(string str)
-        {
-            var value = long.Parse(str);
-            if (short.MinValue < value && value < short.MaxValue)
-                return (short) value;
-            if (int.MinValue < value && value < int.MaxValue)
-                return (int) value;
-            return value;
-        }
-
-        private static object GetNumber(Utf8JsonReader reader)
-        {
-            var str = GetString(reader);
-            if (str.Contains('.'))
-                return GetDecimal(str);
-            else
-                return GetInteger(str);
-        }
-
-        private object? GetValue(Utf8JsonReader reader)
-        {
-            return TokenType switch
-            {
-                JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => GetString(reader),
-                JsonTokenType.Number => GetNumber(reader),
-                JsonTokenType.True => true,
-                JsonTokenType.False => false,
-                _ => null,
-            };
-        }
-
         private bool Read()
         {
             var reader = new Utf8JsonReader(buffer.Slice(bytesConsumed), false, jsonReaderState);
             if (!reader.Read())
                 return false;
             TokenType = reader.TokenType;
-            Value = GetValue(reader);
+            Value = Utf8JsonHelpers.GetValue(reader);
             bytesConsumed += (int) reader.BytesConsumed;
             jsonReaderState = reader.CurrentState;
             return true;

@@ -1,33 +1,22 @@
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
-using BenchmarkDotNet;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
-using Perfolizer.Horology;
 using Wololo.Text.Json;
 
 namespace Benchmarks
 {
     public class Program
     {
-        //[SimpleJob(RuntimeMoniker.CoreRt31)]
-        //[SimpleJob(RuntimeMoniker.CoreRt50)]
         public class TraverseBenchmark
         {
             string json;
 
-            //[Params(2, 20, 200, 20000)]
-            [Params(2000)]
-            //[Params(20000)]
+            [Params(100000)]
             public int Objects;
 
             [GlobalSetup]
@@ -61,12 +50,21 @@ namespace Benchmarks
             {
                 var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
                 var reader = new Utf8JsonStreamReader(stream);
-                //int c = 0;
-                while (await reader.ReadAsync(CancellationToken.None) == true)
+                while (await reader.ReadAsync() == true)
                 {
                     _ = reader.TokenType;
-                    //if (reader.TokenType == JsonTokenType.String)
-                    //    c++;
+                    _ = reader.Value;
+                }
+            }
+
+            [Benchmark]
+            public async Task TraverseUtf8JsonStreamTokenEnumerator()
+            {
+                var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+                await foreach (var result in new Utf8JsonStreamTokenEnumerator(stream))
+                {
+                    _ = result.TokenType;
+                    _ = result.Value;
                 }
             }
 
@@ -75,22 +73,17 @@ namespace Benchmarks
             {
                 var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
                 var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));
-                //int c = 0;
-                while (await reader.ReadAsync(CancellationToken.None) == true)
+                while (await reader.ReadAsync() == true)
                 {
                     _ = reader.TokenType;
-                    //if (reader.TokenType == Newtonsoft.Json.JsonToken.String)
-                    //    c++;
+                    _ = reader.Value;
                 }
             }
         }
 
         public static void Main(string[] args)
         {
-            //var summaryStyle = new BenchmarkDotNet.Reports.SummaryStyle(null, false, SizeUnit.B, TimeUnit.Microsecond);
-            //var config = DefaultConfig.Instance.WithSummaryStyle(summaryStyle);
             var config = DefaultConfig.Instance;
-            //var config = new DebugInProcessConfig();
             BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
         }
     }
