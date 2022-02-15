@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace Wololo.Text.Json
 {
-    public class Utf8JsonStreamReader : IDisposable
+    public sealed class Utf8JsonStreamReader : IDisposable
     {
         private readonly int bufferSize;
         private readonly PipeReader pipeReader;
@@ -16,7 +16,7 @@ namespace Wololo.Text.Json
         private JsonReaderState jsonReaderState = new();
 
         public JsonTokenType TokenType { get; private set; } = JsonTokenType.None;
-        public virtual object? Value { get; private set; }
+        public object? Value { get; private set; }
 
         public Utf8JsonStreamReader(Stream stream, int bufferSize = -1, bool leaveOpen = false)
         {
@@ -38,7 +38,7 @@ namespace Wololo.Text.Json
                 if (!Read())
                     throw new Exception("Invalid JSON or token too large for buffer");
             }
-            return endOfStream && bytesConsumed == buffer.Length;
+            return !(endOfStream && bytesConsumed == buffer.Length);
         }
 
         private static string GetString(Utf8JsonReader reader)
