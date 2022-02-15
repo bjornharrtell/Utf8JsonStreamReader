@@ -49,17 +49,16 @@ namespace Wololo.Text.Json
         private static object GetDecimal(string str)
         {
             var value = double.Parse(str);
-            if (value > float.MinValue && value < float.MaxValue)
-                return (float) value;
+            // TODO: check if value can be losslessly converted to float?
             return value;
         }
 
         private static object GetInteger(string str)
         {
             var value = long.Parse(str);
-            if (value > short.MinValue && value < short.MaxValue)
+            if (short.MinValue < value && value < short.MaxValue)
                 return (short) value;
-            if (value > int.MinValue && value < int.MaxValue)
+            if (int.MinValue < value && value < int.MaxValue)
                 return (int) value;
             return value;
         }
