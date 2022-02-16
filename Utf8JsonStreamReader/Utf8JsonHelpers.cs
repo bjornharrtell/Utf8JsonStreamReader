@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 
@@ -6,11 +7,13 @@ namespace Wololo.Text.Json
 {
     internal static class Utf8JsonHelpers
     {
-        private static string GetString(Utf8JsonReader reader)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static string GetString(ref Utf8JsonReader reader)
         {
             return Encoding.UTF8.GetString(reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static object GetDecimal(string str)
         {
             var value = double.Parse(str);
@@ -18,6 +21,7 @@ namespace Wololo.Text.Json
             return value;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static object GetInteger(string str)
         {
             var value = long.Parse(str);
@@ -28,21 +32,23 @@ namespace Wololo.Text.Json
             return value;
         }
 
-        private static object GetNumber(Utf8JsonReader reader)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static object GetNumber(ref Utf8JsonReader reader)
         {
-            var str = GetString(reader);
+            var str = GetString(ref reader);
             if (str.Contains('.'))
                 return GetDecimal(str);
             else
                 return GetInteger(str);
         }
 
-        public static object? GetValue(Utf8JsonReader reader)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static object? GetValue(ref Utf8JsonReader reader)
         {
             return reader.TokenType switch
             {
-                JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => GetString(reader),
-                JsonTokenType.Number => GetNumber(reader),
+                JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => GetString(ref reader),
+                JsonTokenType.Number => GetNumber(ref reader),
                 JsonTokenType.True => true,
                 JsonTokenType.False => false,
                 _ => null,

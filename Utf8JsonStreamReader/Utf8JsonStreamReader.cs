@@ -45,7 +45,7 @@ namespace Wololo.Text.Json
             if (!reader.Read())
                 return false;
             TokenType = reader.TokenType;
-            Value = Utf8JsonHelpers.GetValue(reader);
+            Value = Utf8JsonHelpers.GetValue(ref reader);
             bytesConsumed += (int) reader.BytesConsumed;
             jsonReaderState = reader.CurrentState;
             return true;
