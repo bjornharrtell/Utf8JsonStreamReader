@@ -47,7 +47,7 @@ namespace Wololo.Text.Json
         {
             return reader.TokenType switch
             {
-                JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => GetString(ref reader),
+                JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => reader.GetString(),
                 JsonTokenType.Number => GetNumber(ref reader),
                 JsonTokenType.True => true,
                 JsonTokenType.False => false,
