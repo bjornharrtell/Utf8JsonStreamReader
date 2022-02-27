@@ -40,15 +40,15 @@ namespace Wololo.Text.Json
                 offset = 0;
                 if (readResult.IsCompleted)
                     done = true;
-                ReadTokens();
+                ReadTokens(done);
                 for (int i = 0; i < resultsLength; i++)
                     yield return resultBuffer[i];
             }
         }
 
-        private void ReadTokens()
+        private void ReadTokens(bool isFinalBlock)
         {
-            var reader = new Utf8JsonReader(buffer, false, jsonReaderState);
+            var reader = new Utf8JsonReader(buffer, isFinalBlock, jsonReaderState);
             int i = 0;
             while (reader.Read())
             {
