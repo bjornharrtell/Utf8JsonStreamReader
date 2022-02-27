@@ -41,6 +41,10 @@ public class Utf8JsonStreamReaderTests
         }
     );
 
+    readonly string jsonArray = JsonSerializer.Serialize(
+        new string[] { "0" }
+    );
+
     [TestMethod]
     public async Task BasicTest()
     {
@@ -106,6 +110,21 @@ public class Utf8JsonStreamReaderTests
         Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
         var result = await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
+        Assert.AreEqual(false, result);
+    }
+
+    [TestMethod]
+    public async Task ArrayTest()
+    {
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
+        var reader = new Utf8JsonStreamReader(stream);
+        await reader.ReadAsync();
+        Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+        await reader.ReadAsync();
+        Assert.AreEqual(JsonTokenType.String, reader.TokenType);
+        Assert.AreEqual("0", reader.Value);
+        var result = await reader.ReadAsync();
+        Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
         Assert.AreEqual(false, result);
     }
 }
