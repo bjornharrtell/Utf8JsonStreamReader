@@ -33,7 +33,7 @@ namespace Wololo.Text.Json
                 buffer = readResult.Buffer;
                 bytesConsumed = 0;
                 endOfStream = readResult.IsCompleted;
-                if (!Read(endOfStream))
+                if ((buffer.Length - bytesConsumed) > 0 && !Read(endOfStream))
                     throw new Exception("Invalid JSON or token too large for buffer");
             }
             return !(endOfStream && bytesConsumed == buffer.Length);
@@ -42,12 +42,13 @@ namespace Wololo.Text.Json
         private bool Read(bool isFinalBlock)
         {
             var reader = new Utf8JsonReader(buffer.Slice(bytesConsumed), isFinalBlock, jsonReaderState);
-            if (!reader.Read())
+            var result = reader.Read();
+            bytesConsumed += (int) reader.BytesConsumed;
+            jsonReaderState = reader.CurrentState;
+            if (!result)
                 return false;
             TokenType = reader.TokenType;
             Value = Utf8JsonHelpers.GetValue(ref reader);
-            bytesConsumed += (int) reader.BytesConsumed;
-            jsonReaderState = reader.CurrentState;
             return true;
         }
 

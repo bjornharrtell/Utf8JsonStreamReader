@@ -138,4 +138,36 @@ public class Utf8JsonStreamReaderTests
         Assert.AreEqual((short) 0, reader.Value);
         Assert.AreEqual(false, result);
     }
+
+    [TestMethod]
+    public async Task EskeTest()
+    {
+        var stream = new MemoryStream(new byte[] { 0x5B, 0x0D, 0x0A, 0x22, 0x30, 0x22, 0x0D, 0x0A, 0x5D, 0x0D, 0x0A });
+        var reader = new Utf8JsonStreamReader(stream);
+        await reader.ReadAsync();
+        Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+        await reader.ReadAsync();
+        Assert.AreEqual(JsonTokenType.String, reader.TokenType);
+        Assert.AreEqual("0", reader.Value);
+        await reader.ReadAsync();
+        Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+        var result = await reader.ReadAsync();
+        Assert.AreEqual(false, result);
+    }
+
+    [TestMethod]
+    public async Task Eske2Test()
+    {
+        var stream = new MemoryStream(new byte[] { 0x5B, 0x0D, 0x0A, 0x22, 0x30, 0x22, 0x0D, 0x0A, 0x5D, 0x0D, 0x0A });
+        var e = new Utf8JsonStreamTokenEnumerator(stream).GetAsyncEnumerator();
+        await e.MoveNextAsync();
+        Assert.AreEqual(JsonTokenType.StartArray, e.Current.TokenType);
+        await e.MoveNextAsync();
+        Assert.AreEqual(JsonTokenType.String, e.Current.TokenType);
+        Assert.AreEqual("0", e.Current.Value);
+        await e.MoveNextAsync();
+        Assert.AreEqual(JsonTokenType.EndArray, e.Current.TokenType);
+        var result = await e.MoveNextAsync();
+        Assert.AreEqual(false, result);
+    }
 }
