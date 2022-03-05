@@ -129,6 +129,21 @@ public class Utf8JsonStreamReaderTests
     }
 
     [TestMethod]
+    public void ArraySyncTest()
+    {
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
+        var reader = new Utf8JsonStreamReader(stream);
+        reader.Read();
+        Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+        reader.Read();
+        Assert.AreEqual(JsonTokenType.String, reader.TokenType);
+        Assert.AreEqual("0", reader.Value);
+        var result = reader.Read();
+        Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+        Assert.AreEqual(false, result);
+    }
+
+    [TestMethod]
     public async Task SingleValueTest()
     {
         var stream = new MemoryStream(new byte[] { 0x30 });
