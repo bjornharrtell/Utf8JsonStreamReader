@@ -10,7 +10,11 @@ namespace Wololo.Text.Json
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string GetString(ref Utf8JsonReader reader)
         {
+#if NETSTANDARD2_0
+            return Encoding.UTF8.GetString(reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan.ToArray());
+#else
             return Encoding.UTF8.GetString(reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan);
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
