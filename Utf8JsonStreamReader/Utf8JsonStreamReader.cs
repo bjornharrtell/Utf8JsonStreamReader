@@ -9,6 +9,7 @@ namespace Wololo.Text.Json
         private readonly int bufferSize;
         private readonly PipeReader pipeReader;
 
+        private bool done = false;
         private bool endOfStream = false;
         private int bytesConsumed = 0;
         private ReadOnlySequence<byte> buffer;
@@ -25,6 +26,12 @@ namespace Wololo.Text.Json
 
         public async Task<bool> ReadAsync(CancellationToken cancellationToken = default)
         {
+            if (done)
+            {
+                TokenType = JsonTokenType.None;
+                Value = null;
+                return false;
+            }
             if (TokenType == JsonTokenType.None || !Read(endOfStream))
             {
                 if (bytesConsumed > 0)
@@ -36,11 +43,19 @@ namespace Wololo.Text.Json
                 if ((buffer.Length - bytesConsumed) > 0 && !Read(endOfStream))
                     throw new Exception("Invalid JSON or token too large for buffer");
             }
-            return !(endOfStream && bytesConsumed == buffer.Length);
+            if (endOfStream && bytesConsumed == buffer.Length)
+                done = true;
+            return true;
         }
 
         public bool Read()
         {
+            if (done)
+            {
+                TokenType = JsonTokenType.None;
+                Value = null;
+                return false;
+            }
             if (TokenType == JsonTokenType.None || !Read(endOfStream))
             {
                 if (bytesConsumed > 0)
@@ -52,7 +67,9 @@ namespace Wololo.Text.Json
                 if ((buffer.Length - bytesConsumed) > 0 && !Read(endOfStream))
                     throw new Exception("Invalid JSON or token too large for buffer");
             }
-            return !(endOfStream && bytesConsumed == buffer.Length);
+            if (endOfStream && bytesConsumed == buffer.Length)
+                done = true;
+            return true;
         }
 
         private bool Read(bool isFinalBlock)
