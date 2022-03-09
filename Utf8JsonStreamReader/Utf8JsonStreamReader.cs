@@ -20,7 +20,7 @@ namespace Wololo.Text.Json
 
         public Utf8JsonStreamReader(Stream stream, int bufferSize = -1, bool leaveOpen = false)
         {
-            this.bufferSize = bufferSize == -1 ? 1024 * 16 : bufferSize;
+            this.bufferSize = bufferSize == -1 ? 1024 * 8 : bufferSize;
             pipeReader = PipeReader.Create(stream, new StreamPipeReaderOptions(null, this.bufferSize, this.bufferSize, leaveOpen));
         }
 
