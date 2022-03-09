@@ -79,7 +79,7 @@ public class Utf8JsonStreamReaderTests
         Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
         Assert.AreEqual("Num", reader.Value);
         await reader.ReadAsync();
-        Assert.AreEqual((double)13434934.23233434, reader.Value);
+        Assert.AreEqual((float)13434934.23233434, reader.Value);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
         var result = await reader.ReadAsync();
