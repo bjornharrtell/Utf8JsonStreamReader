@@ -1,6 +1,4 @@
-using System.Buffers;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.Json;
 
 namespace Wololo.Text.Json
@@ -8,42 +6,17 @@ namespace Wololo.Text.Json
     internal static class Utf8JsonHelpers
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string GetString(ref Utf8JsonReader reader)
+        private static object? GetNumber(ref Utf8JsonReader reader)
         {
-#if NETSTANDARD2_0
-            return Encoding.UTF8.GetString(reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan.ToArray());
-#else
-            return Encoding.UTF8.GetString(reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan);
-#endif
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static object GetDecimal(string str)
-        {
-            var value = double.Parse(str);
-            // TODO: check if value can be losslessly converted to float?
-            return value;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static object GetInteger(string str)
-        {
-            var value = long.Parse(str);
-            if (short.MinValue < value && value < short.MaxValue)
-                return (short) value;
-            if (int.MinValue < value && value < int.MaxValue)
-                return (int) value;
-            return value;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static object GetNumber(ref Utf8JsonReader reader)
-        {
-            var str = GetString(ref reader);
-            if (str.Contains('.'))
-                return GetDecimal(str);
-            else
-                return GetInteger(str);
+            if (reader.TryGetInt16(out short shortValue))
+                return shortValue;
+            if (reader.TryGetInt32(out int intValue))
+                return intValue;
+            if (reader.TryGetSingle(out float floatValue))
+                return floatValue;
+            if (reader.TryGetDouble(out double doubleValue))
+                return doubleValue;
+            return null;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
