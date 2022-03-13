@@ -6,7 +6,7 @@
     <LangVersion>10</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.14.0</Version>
+    <Version>0.15.0</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/bjornharrtell/Utf8JsonStreamReader</RepositoryUrl>
     <Description>A streaming JSON parser based on System.Text.Json.Utf8JsonReader</Description>
