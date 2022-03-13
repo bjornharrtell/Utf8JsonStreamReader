@@ -12,6 +12,8 @@ namespace Wololo.Text.Json
                 return shortValue;
             if (reader.TryGetInt32(out int intValue))
                 return intValue;
+            if (reader.TryGetInt64(out long longValue))
+                return longValue;
             if (reader.TryGetSingle(out float floatValue))
                 return floatValue;
             if (reader.TryGetDouble(out double doubleValue))
