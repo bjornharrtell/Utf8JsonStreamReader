@@ -16,7 +16,8 @@ public class Utf8JsonStreamReaderTests
             NegativeId = -23,
             TimeStamp = "2012-10-21T00:00:00+05:30",
             Status = false,
-            Num = 13434934.23233434
+            Num = 13434934.23233434,
+            NumD = 1.343493434534523233434
         },
         new JsonSerializerOptions()
         {
@@ -79,7 +80,12 @@ public class Utf8JsonStreamReaderTests
         Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
         Assert.AreEqual("Num", reader.Value);
         await reader.ReadAsync();
-        Assert.AreEqual((float)13434934.23233434, reader.Value);
+        Assert.AreEqual(13434934.23233434, reader.Value);
+        await reader.ReadAsync();
+        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
+        Assert.AreEqual("NumD", reader.Value);
+        await reader.ReadAsync();
+        Assert.AreEqual(1.343493434534523233434, reader.Value);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
         var result = await reader.ReadAsync();
