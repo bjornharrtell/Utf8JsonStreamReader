@@ -2,13 +2,14 @@ using System.Buffers;
 using System.IO.Pipelines;
 using System.Text.Json;
 
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit {}
+}
+
 namespace Wololo.Text.Json
 {
-    public struct JsonResult
-    {
-        public JsonTokenType TokenType { get; internal set; } = JsonTokenType.None;
-        public object? Value { get; internal set; }
-    }
+    public readonly record struct JsonResult(JsonTokenType TokenType = JsonTokenType.None, object? Value = null);
 
     public sealed class Utf8JsonStreamTokenEnumerator : IAsyncEnumerable<JsonResult>
     {
@@ -53,10 +54,7 @@ namespace Wololo.Text.Json
             while (reader.Read())
             {
                 jsonReaderState = reader.CurrentState;
-                resultBuffer[i++] = new JsonResult() {
-                    TokenType = reader.TokenType,
-                    Value = Utf8JsonHelpers.GetValue(ref reader)
-                };
+                resultBuffer[i++] = new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader));
             }
             offset = (int) reader.BytesConsumed;
             resultsLength = i;
