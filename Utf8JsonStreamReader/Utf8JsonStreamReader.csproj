@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
-    <PackageReference Include="System.Text.Json" Version="7.0.0" />
+    <PackageReference Include="System.Text.Json" Version="7.0.2" />
   </ItemGroup>
 
   <ItemGroup>
