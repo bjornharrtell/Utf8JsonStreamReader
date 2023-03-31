@@ -167,7 +167,7 @@ public class Utf8JsonStreamReaderTests
         var reader = new Utf8JsonStreamReader(stream);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
-        Assert.AreEqual((short) 0, reader.Value);
+        Assert.AreEqual((short)0, reader.Value);
         var result = await reader.ReadAsync();
         Assert.AreEqual(false, result);
     }
@@ -204,5 +204,50 @@ public class Utf8JsonStreamReaderTests
         Assert.AreEqual(JsonTokenType.EndArray, e.Current.TokenType);
         var result = await e.MoveNextAsync();
         Assert.AreEqual(false, result);
+    }
+
+    [TestMethod]
+    public async Task Eske3Test()
+    {
+        var stream = File.Open(Path.Join("Data", "A2MB_Json_BraceOnBorder.json"), FileMode.Open);
+        Utf8JsonStreamReader reader = new(stream);
+        int balO = 0;
+        int balA = 0;
+        while (reader.Read())
+        {
+            switch (reader.TokenType)
+            {
+                case JsonTokenType.StartObject:
+                    balO++;
+                    break;
+                case JsonTokenType.StartArray:
+                    balA++;
+                    break;
+                case JsonTokenType.EndObject:
+                    Assert.IsTrue(0 < balO);
+                    balO--;
+                    break;
+                case JsonTokenType.PropertyName:
+                    object name = reader.Value;
+                    break;
+                case JsonTokenType.EndArray:
+                    Assert.IsTrue(0 < balA);
+                    balA--;
+                    break;
+                case JsonTokenType.Comment:
+                    break;
+                case JsonTokenType.String:
+                case JsonTokenType.Number:
+                case JsonTokenType.True:
+                case JsonTokenType.False:
+                case JsonTokenType.Null:
+                    object v = reader.Value;
+                    break;
+                default:
+                    throw new($"Unexpected token in this state, expecting value, got {reader.TokenType}");
+            }
+        }
+        Assert.AreEqual(0, balA);
+        Assert.AreEqual(0, balO);
     }
 }
