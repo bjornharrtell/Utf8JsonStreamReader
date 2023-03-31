@@ -177,6 +177,7 @@ public class Utf8JsonStreamReaderTests
     {
         var stream = new MemoryStream(new byte[] { 0x5B, 0x0D, 0x0A, 0x22, 0x30, 0x22, 0x0D, 0x0A, 0x5D, 0x0D, 0x0A });
         var reader = new Utf8JsonStreamReader(stream);
+        Assert.AreEqual(JsonTokenType.None, reader.TokenType);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
         await reader.ReadAsync();
@@ -184,8 +185,8 @@ public class Utf8JsonStreamReaderTests
         Assert.AreEqual("0", reader.Value);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-        await reader.ReadAsync();
         var result = await reader.ReadAsync();
+        Assert.AreEqual(JsonTokenType.None, reader.TokenType);
         Assert.AreEqual(false, result);
     }
 
