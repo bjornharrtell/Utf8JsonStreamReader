@@ -73,10 +73,10 @@ namespace Wololo.Text.Json
             // if first read condition or if read fails
             if (TokenType == JsonTokenType.None || !Read(endOfStream))
             {
-                if (FinishEarly())
-                    return false;
                 Advance();
                 await ReadAtLeastAsync(cancellationToken);
+                if (FinishEarly())
+                    return false;
                 TryRead();
             }
             DetermineDone();
@@ -90,10 +90,10 @@ namespace Wololo.Text.Json
             // if first read condition or if read fails
             if (TokenType == JsonTokenType.None || !Read(endOfStream))
             {
-                if (FinishEarly())
-                    return false;
                 Advance();
                 ReadAtLeastAsync(CancellationToken.None).GetAwaiter().GetResult();
+                if (FinishEarly())
+                    return false;
                 TryRead();
             }
             DetermineDone();
