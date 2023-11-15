@@ -8,83 +8,82 @@ using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 using Wololo.Text.Json;
 
-namespace Benchmarks
+namespace Benchmarks;
+
+public class Program
 {
-    public class Program
+    public class TraverseBenchmark
     {
-        public class TraverseBenchmark
+        string json;
+
+        [Params(100000)]
+        public int Objects;
+
+        [GlobalSetup]
+        public void Setup()
         {
-            string json;
-
-            [Params(100000)]
-            public int Objects;
-
-            [GlobalSetup]
-            public void Setup()
-            {
-                var elements = new object[Objects];
-                for (int i = 0; i < elements.Length; i++)
-                    elements[i] = new
-                    {
-                        Id = 2,
-                        NegativeId = -23,
-                        TimeStamp = "2012-10-21T00:00:00+05:30",
-                        Status = false,
-                        Num = 13434934.23233434
-                    };;
-                var containerObject = new
+            var elements = new object[Objects];
+            for (int i = 0; i < elements.Length; i++)
+                elements[i] = new
                 {
-                    Array = elements
+                    Id = 2,
+                    NegativeId = -23,
+                    TimeStamp = "2012-10-21T00:00:00+05:30",
+                    Status = false,
+                    Num = 13434934.23233434
                 };
-                json = JsonSerializer.Serialize(
-                    containerObject,
-                    new JsonSerializerOptions()
-                    {
-                        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                        WriteIndented = false
-                    });
-            }
-
-            [Benchmark]
-            public async Task TraverseUtf8JsonStreamReader()
+            var containerObject = new
             {
-                var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-                var reader = new Utf8JsonStreamReader(stream);
-                while (await reader.ReadAsync() == true)
+                Array = elements
+            };
+            json = JsonSerializer.Serialize(
+                containerObject,
+                new JsonSerializerOptions()
                 {
-                    _ = reader.TokenType;
-                    _ = reader.Value;
-                }
-            }
-
-            [Benchmark]
-            public async Task TraverseUtf8JsonStreamTokenEnumerator()
-            {
-                var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-                await foreach (var result in new Utf8JsonStreamTokenEnumerator(stream))
-                {
-                    _ = result.TokenType;
-                    _ = result.Value;
-                }
-            }
-
-            [Benchmark]
-            public async Task TraverseNewtonsoftJsonTextReader()
-            {
-                var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-                var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));
-                while (await reader.ReadAsync() == true)
-                {
-                    _ = reader.TokenType;
-                    _ = reader.Value;
-                }
-            }
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                    WriteIndented = false
+                });
         }
 
-        public static void Main(string[] args)
+        [Benchmark]
+        public async Task TraverseUtf8JsonStreamReader()
         {
-            var config = DefaultConfig.Instance;
-            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader(stream);
+            while (await reader.ReadAsync() == true)
+            {
+                _ = reader.TokenType;
+                _ = reader.Value;
+            }
         }
+
+        [Benchmark]
+        public async Task TraverseUtf8JsonStreamTokenEnumerator()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            await foreach (var result in new Utf8JsonStreamTokenEnumerator(stream))
+            {
+                _ = result.TokenType;
+                _ = result.Value;
+            }
+        }
+
+        [Benchmark]
+        public async Task TraverseNewtonsoftJsonTextReader()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));
+            while (await reader.ReadAsync() == true)
+            {
+                _ = reader.TokenType;
+                _ = reader.Value;
+            }
+        }
+    }
+
+    public static void Main(string[] args)
+    {
+        var config = DefaultConfig.Instance;
+        BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
     }
 }

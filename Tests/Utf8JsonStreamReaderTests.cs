@@ -163,7 +163,7 @@ public class Utf8JsonStreamReaderTests
     [TestMethod]
     public async Task SingleValueTest()
     {
-        var stream = new MemoryStream(new byte[] { 0x30 });
+        var stream = new MemoryStream("0"u8.ToArray());
         var reader = new Utf8JsonStreamReader(stream);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
@@ -175,7 +175,7 @@ public class Utf8JsonStreamReaderTests
     [TestMethod]
     public async Task EskeTest()
     {
-        var stream = new MemoryStream(new byte[] { 0x5B, 0x0D, 0x0A, 0x22, 0x30, 0x22, 0x0D, 0x0A, 0x5D, 0x0D, 0x0A });
+        var stream = new MemoryStream("[\r\n\"0\"\r\n]\r\n"u8.ToArray());
         var reader = new Utf8JsonStreamReader(stream);
         Assert.AreEqual(JsonTokenType.None, reader.TokenType);
         await reader.ReadAsync();
@@ -193,7 +193,7 @@ public class Utf8JsonStreamReaderTests
     [TestMethod]
     public async Task Eske2Test()
     {
-        var stream = new MemoryStream(new byte[] { 0x5B, 0x0D, 0x0A, 0x22, 0x30, 0x22, 0x0D, 0x0A, 0x5D, 0x0D, 0x0A });
+        var stream = new MemoryStream("[\r\n\"0\"\r\n]\r\n"u8.ToArray());
         var e = new Utf8JsonStreamTokenEnumerator(stream).GetAsyncEnumerator();
         await e.MoveNextAsync();
         Assert.AreEqual(JsonTokenType.StartArray, e.Current.TokenType);
@@ -228,7 +228,7 @@ public class Utf8JsonStreamReaderTests
                     balO--;
                     break;
                 case JsonTokenType.PropertyName:
-                    object name = reader.Value;
+                    _ = reader.Value;
                     break;
                 case JsonTokenType.EndArray:
                     Assert.IsTrue(0 < balA);
@@ -241,7 +241,7 @@ public class Utf8JsonStreamReaderTests
                 case JsonTokenType.True:
                 case JsonTokenType.False:
                 case JsonTokenType.Null:
-                    object v = reader.Value;
+                    _ = reader.Value;
                     break;
                 default:
                     throw new($"Unexpected token in this state, expecting value, got {reader.TokenType}");
