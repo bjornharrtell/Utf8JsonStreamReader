@@ -42,7 +42,9 @@ Intel Core i7-1065G7 CPU 1.30GHz, 1 CPU, 8 logical and 4 physical cores
 
 | Method                                | Objects | Mean     | Error   | StdDev  |
 |-------------------------------------- |-------- |---------:|--------:|--------:|
-| TraverseUtf8JsonStreamReader          | 100000  | 169.3 ms | 0.55 ms | 0.46 ms |
-| TraverseUtf8JsonStreamTokenEnumerator | 100000  | 148.4 ms | 2.96 ms | 5.70 ms |
-| TraverseNewtonsoftJsonTextReader      | 100000  | 182.5 ms | 0.92 ms | 0.82 ms |
+| TraverseUtf8JsonStreamReader          | 100000  | 171.9 ms | 0.58 ms | 0.49 ms |
+| TraverseUtf8JsonStreamReaderSync      | 100000  | 161.2 ms | 1.52 ms | 1.27 ms |
+| TraverseUtf8JsonStreamTokenEnumerator | 100000  | 147.3 ms | 2.88 ms | 5.33 ms |
+| TraverseNewtonsoftJsonTextReader      | 100000  | 182.4 ms | 0.96 ms | 0.85 ms |
+| TraverseNewtonsoftJsonTextReaderSync  | 100000  | 109.8 ms | 0.27 ms | 0.25 ms |
 ```
