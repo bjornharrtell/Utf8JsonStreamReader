@@ -4,8 +4,8 @@ namespace Wololo.Text.Json;
 
 public sealed class Utf8JsonStreamReader : IDisposable, IAsyncDisposable
 {
-    private IEnumerator<JsonResult>? enumerator = null;
-    private IAsyncEnumerator<JsonResult>? asyncEnumerator = null;
+    private readonly IEnumerator<JsonResult>? enumerator = null;
+    private readonly IAsyncEnumerator<JsonResult>? asyncEnumerator = null;
 
     public JsonTokenType TokenType { get; private set; } = JsonTokenType.None;
     public object? Value { get; private set; }
@@ -13,14 +13,15 @@ public sealed class Utf8JsonStreamReader : IDisposable, IAsyncDisposable
     public Utf8JsonStreamReader(Stream stream, int bufferSize = -1, bool async = false)
     {
         if (async)
-            this.asyncEnumerator = new Utf8JsonStreamTokenAsyncEnumerable(stream, bufferSize).GetAsyncEnumerator();
+            asyncEnumerator = new Utf8JsonStreamTokenAsyncEnumerable(stream, bufferSize).GetAsyncEnumerator();
         else
-            this.enumerator = new Utf8JsonStreamTokenEnumerable(stream, bufferSize).GetEnumerator();
+            enumerator = new Utf8JsonStreamTokenEnumerable(stream, bufferSize).GetEnumerator();
     }
 
     public async Task<bool> ReadAsync()
     {
-        if (!await asyncEnumerator!.MoveNextAsync()) {
+        if (!await asyncEnumerator!.MoveNextAsync())
+        {
             TokenType = JsonTokenType.None;
             Value = null;
             return false;
@@ -32,7 +33,8 @@ public sealed class Utf8JsonStreamReader : IDisposable, IAsyncDisposable
 
     public bool Read()
     {
-        if (!enumerator!.MoveNext()) {
+        if (!enumerator!.MoveNext())
+        {
             TokenType = JsonTokenType.None;
             Value = null;
             return false;
@@ -42,13 +44,6 @@ public sealed class Utf8JsonStreamReader : IDisposable, IAsyncDisposable
         return true;
     }
 
-    public void Dispose()
-    {
-        enumerator?.Dispose();
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        return asyncEnumerator!.DisposeAsync();
-    }
+    public void Dispose() => enumerator?.Dispose();
+    public ValueTask DisposeAsync() => asyncEnumerator!.DisposeAsync();
 }
