@@ -49,7 +49,7 @@ public class Program
         public async Task TraverseUtf8JsonStreamReaderAsync()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-            var reader = new Utf8JsonStreamReader(stream);
+            var reader = new Utf8JsonStreamReader(stream, -1, true);
             while (await reader.ReadAsync() == true)
             {
                 _ = reader.TokenType;
