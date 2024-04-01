@@ -46,7 +46,7 @@ public class Program
         }
 
         [Benchmark]
-        public async Task TraverseUtf8JsonStreamReader()
+        public async Task TraverseUtf8JsonStreamReaderAsync()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader(stream);
@@ -58,7 +58,7 @@ public class Program
         }
 
         [Benchmark]
-        public void TraverseUtf8JsonStreamReaderSync()
+        public void TraverseUtf8JsonStreamReader()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader(stream);
@@ -70,10 +70,10 @@ public class Program
         }
 
         [Benchmark]
-        public async Task TraverseUtf8JsonStreamTokenEnumerator()
+        public async Task TraverseUtf8JsonStreamTokenAsyncEnumerable()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-            await foreach (var result in new Utf8JsonStreamTokenEnumerator(stream))
+            await foreach (var result in new Utf8JsonStreamTokenAsyncEnumerable(stream))
             {
                 _ = result.TokenType;
                 _ = result.Value;
@@ -81,7 +81,18 @@ public class Program
         }
 
         [Benchmark]
-        public async Task TraverseNewtonsoftJsonTextReader()
+        public void TraverseUtf8JsonStreamTokenEnumerable()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            foreach (var result in new Utf8JsonStreamTokenEnumerable(stream))
+            {
+                _ = result.TokenType;
+                _ = result.Value;
+            }
+        }
+
+        [Benchmark]
+        public async Task TraverseNewtonsoftJsonTextReaderAsync()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));
@@ -93,7 +104,7 @@ public class Program
         }
 
         [Benchmark]
-        public void TraverseNewtonsoftJsonTextReaderSync()
+        public void TraverseNewtonsoftJsonTextReader()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));

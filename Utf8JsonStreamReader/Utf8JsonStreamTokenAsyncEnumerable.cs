@@ -1,27 +1,27 @@
-using System.Buffers;
-using System.IO.Pipelines;
 using System.Text.Json;
 
 namespace Wololo.Text.Json;
 
 public readonly record struct JsonResult(JsonTokenType TokenType = JsonTokenType.None, object? Value = null);
 
-public sealed class Utf8JsonStreamTokenEnumerator : IAsyncEnumerable<JsonResult>
+public sealed class Utf8JsonStreamTokenAsyncEnumerable : IAsyncEnumerable<JsonResult>
 {
     private readonly int bufferSize;
-    private readonly PipeReader pipeReader;
+    private readonly Stream stream;
     private readonly JsonResult[] resultBuffer;
 
     private JsonReaderState jsonReaderState = new();
-    private ReadOnlySequence<byte> buffer;
+    private Memory<byte> buffer;
+    private int bufferLength = 0;
     private int offset = 0;
     private int resultsLength = 0;
 
-    public Utf8JsonStreamTokenEnumerator(Stream stream, int bufferSize = -1, bool leaveOpen = false)
+    public Utf8JsonStreamTokenAsyncEnumerable(Stream stream, int bufferSize = -1, bool leaveOpen = false)
     {
         this.bufferSize = bufferSize == -1 ? 1024 * 8 : bufferSize;
+        this.buffer = new byte[this.bufferSize];
         resultBuffer = new JsonResult[this.bufferSize];
-        pipeReader = PipeReader.Create(stream, new StreamPipeReaderOptions(null, this.bufferSize, this.bufferSize, leaveOpen));
+        this.stream = stream;
     }
 
     public async IAsyncEnumerator<JsonResult> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -29,13 +29,13 @@ public sealed class Utf8JsonStreamTokenEnumerator : IAsyncEnumerable<JsonResult>
         var done = false;
         while (!done)
         {
-            if (offset > 0)
-                pipeReader.AdvanceTo(buffer.GetPosition(offset));
-            var readResult = await pipeReader.ReadAtLeastAsync(bufferSize, cancellationToken);
-            buffer = readResult.Buffer;
+            var remaining = bufferLength - offset;
+            if (remaining > 0)
+                buffer.Slice(offset).CopyTo(buffer);
+            var readLength = await stream.ReadAtLeastAsync(buffer.Slice(remaining), this.bufferSize - remaining, false);
+            bufferLength = readLength + remaining;
             offset = 0;
-            if (readResult.IsCompleted)
-                done = true;
+            done = bufferLength < this.bufferSize;
             ReadTokens(done);
             for (int i = 0; i < resultsLength; i++)
                 yield return resultBuffer[i];
@@ -44,7 +44,7 @@ public sealed class Utf8JsonStreamTokenEnumerator : IAsyncEnumerable<JsonResult>
 
     private void ReadTokens(bool isFinalBlock)
     {
-        var reader = new Utf8JsonReader(buffer, isFinalBlock, jsonReaderState);
+        var reader = new Utf8JsonReader(buffer.Slice(offset, bufferLength - offset).Span, isFinalBlock, jsonReaderState);
         int i = 0;
         while (reader.Read())
         {

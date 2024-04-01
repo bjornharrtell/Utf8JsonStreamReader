@@ -194,7 +194,7 @@ public class Utf8JsonStreamReaderTests
     public async Task Eske2Test()
     {
         var stream = new MemoryStream("[\r\n\"0\"\r\n]\r\n"u8.ToArray());
-        var e = new Utf8JsonStreamTokenEnumerator(stream).GetAsyncEnumerator();
+        var e = new Utf8JsonStreamTokenAsyncEnumerable(stream).GetAsyncEnumerator();
         await e.MoveNextAsync();
         Assert.AreEqual(JsonTokenType.StartArray, e.Current.TokenType);
         await e.MoveNextAsync();
@@ -207,7 +207,7 @@ public class Utf8JsonStreamReaderTests
     }
 
     [TestMethod]
-    public async Task Eske3Test()
+    public void Eske3Test()
     {
         var stream = File.Open(Path.Join("Data", "A2MB_Json_BraceOnBorder.json"), FileMode.Open);
         Utf8JsonStreamReader reader = new(stream);
