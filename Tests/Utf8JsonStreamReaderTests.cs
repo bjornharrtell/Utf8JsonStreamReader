@@ -51,7 +51,7 @@ public class Utf8JsonStreamReaderTests
     public async Task BasicTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonBasic));
-        var reader = new Utf8JsonStreamReader(stream);
+        var reader = new Utf8JsonStreamReader(stream, -1, true);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
         await reader.ReadAsync();
@@ -102,7 +102,7 @@ public class Utf8JsonStreamReaderTests
     public async Task NestedTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonNested));
-        var reader = new Utf8JsonStreamReader(stream);
+        var reader = new Utf8JsonStreamReader(stream, -1, true);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
         await reader.ReadAsync();
@@ -132,7 +132,7 @@ public class Utf8JsonStreamReaderTests
     public async Task ArrayTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
-        var reader = new Utf8JsonStreamReader(stream);
+        var reader = new Utf8JsonStreamReader(stream, -1, true);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
         await reader.ReadAsync();
@@ -164,7 +164,7 @@ public class Utf8JsonStreamReaderTests
     public async Task SingleValueTest()
     {
         var stream = new MemoryStream("0"u8.ToArray());
-        var reader = new Utf8JsonStreamReader(stream);
+        var reader = new Utf8JsonStreamReader(stream, -1, true);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
         Assert.AreEqual((short)0, reader.Value);
@@ -176,7 +176,7 @@ public class Utf8JsonStreamReaderTests
     public async Task EskeTest()
     {
         var stream = new MemoryStream("[\r\n\"0\"\r\n]\r\n"u8.ToArray());
-        var reader = new Utf8JsonStreamReader(stream);
+        var reader = new Utf8JsonStreamReader(stream, -1, true);
         Assert.AreEqual(JsonTokenType.None, reader.TokenType);
         await reader.ReadAsync();
         Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);

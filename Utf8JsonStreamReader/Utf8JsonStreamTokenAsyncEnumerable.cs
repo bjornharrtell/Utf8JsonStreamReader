@@ -16,7 +16,7 @@ public sealed class Utf8JsonStreamTokenAsyncEnumerable : IAsyncEnumerable<JsonRe
     private int offset = 0;
     private int resultsLength = 0;
 
-    public Utf8JsonStreamTokenAsyncEnumerable(Stream stream, int bufferSize = -1, bool leaveOpen = false)
+    public Utf8JsonStreamTokenAsyncEnumerable(Stream stream, int bufferSize = -1)
     {
         this.bufferSize = bufferSize == -1 ? 1024 * 8 : bufferSize;
         this.buffer = new byte[this.bufferSize];
