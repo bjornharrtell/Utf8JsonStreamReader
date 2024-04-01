@@ -33,16 +33,16 @@ Intel Core i7-1065G7 CPU 1.30GHz, 1 CPU, 8 logical and 4 physical cores
 ### 0.17.x (.NET 8)
 
 ```sh
-BenchmarkDotNet v0.13.10, Ubuntu 23.10 (Mantic Minotaur)
+BenchmarkDotNet v0.13.12, Ubuntu 23.10 (Mantic Minotaur)
 Intel Core i7-1065G7 CPU 1.30GHz, 1 CPU, 8 logical and 4 physical cores
-.NET SDK 8.0.100-rc.2.23502.1
-  [Host]     : .NET 8.0.0 (8.0.23.47517), X64 RyuJIT AVX2
-  DefaultJob : .NET 8.0.0 (8.0.23.47517), X64 RyuJIT AVX2
+.NET SDK 8.0.103
+  [Host]     : .NET 8.0.3 (8.0.324.11423), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  DefaultJob : .NET 8.0.3 (8.0.324.11423), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
 
 
 | Method                                | Objects | Mean     | Error   | StdDev  |
 |-------------------------------------- |-------- |---------:|--------:|--------:|
-| TraverseUtf8JsonStreamReader          | 100000  | 149.5 ms | 1.70 ms | 1.59 ms |
-| TraverseUtf8JsonStreamTokenEnumerator | 100000  | 131.8 ms | 2.63 ms | 3.78 ms |
-| TraverseNewtonsoftJsonTextReader      | 100000  | 160.3 ms | 1.11 ms | 0.98 ms
+| TraverseUtf8JsonStreamReader          | 100000  | 169.3 ms | 0.55 ms | 0.46 ms |
+| TraverseUtf8JsonStreamTokenEnumerator | 100000  | 148.4 ms | 2.96 ms | 5.70 ms |
+| TraverseNewtonsoftJsonTextReader      | 100000  | 182.5 ms | 0.92 ms | 0.82 ms |
 ```
