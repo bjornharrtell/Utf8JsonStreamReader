@@ -58,6 +58,18 @@ public class Program
         }
 
         [Benchmark]
+        public void TraverseUtf8JsonStreamReaderSync()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader(stream);
+            while (reader.Read())
+            {
+                _ = reader.TokenType;
+                _ = reader.Value;
+            }
+        }
+
+        [Benchmark]
         public async Task TraverseUtf8JsonStreamTokenEnumerator()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
@@ -74,6 +86,18 @@ public class Program
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));
             while (await reader.ReadAsync() == true)
+            {
+                _ = reader.TokenType;
+                _ = reader.Value;
+            }
+        }
+
+        [Benchmark]
+        public void TraverseNewtonsoftJsonTextReaderSync()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));
+            while (reader.Read())
             {
                 _ = reader.TokenType;
                 _ = reader.Value;
