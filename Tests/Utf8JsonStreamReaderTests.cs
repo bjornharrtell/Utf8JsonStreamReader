@@ -69,8 +69,9 @@ public class Utf8JsonStreamReaderTests
     public void BasicTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonBasic));
+        var reader = new Utf8JsonStreamReader();
         int c = 0;
-        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        reader.Read(stream, (ref Utf8JsonReader reader) =>
         {
             if (c == 0)
                 Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
@@ -112,8 +113,9 @@ public class Utf8JsonStreamReaderTests
     public void NestedTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonNested));
+        var reader = new Utf8JsonStreamReader();
         int c = 0;
-        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        reader.Read(stream, (ref Utf8JsonReader reader) =>
         {
             if (c == 0)
                 Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
@@ -141,8 +143,27 @@ public class Utf8JsonStreamReaderTests
     public void ArrayTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
+        var reader = new Utf8JsonStreamReader();
         int c = 0;
-        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        reader.Read(stream, (ref Utf8JsonReader reader) =>
+        {
+            if (c == 0)
+                Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+            else if (c == 1)
+                AssertString("0", ref reader);
+            else if (c == 2)
+                Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+            c++;
+        });
+    }
+
+    [TestMethod]
+    public async Task ArrayAsyncTest()
+    {
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
+        var reader = new Utf8JsonStreamReader();
+        int c = 0;
+        await reader.ReadAsync(stream, (ref Utf8JsonReader reader) =>
         {
             if (c == 0)
                 Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
@@ -158,8 +179,9 @@ public class Utf8JsonStreamReaderTests
     public void SingleValueTest()
     {
         var stream = new MemoryStream("0"u8.ToArray());
+        var reader = new Utf8JsonStreamReader();
         int c = 0;
-        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        reader.Read(stream, (ref Utf8JsonReader reader) =>
         {
             if (c == 0)
                 AssertInt16(0, ref reader);
@@ -171,8 +193,9 @@ public class Utf8JsonStreamReaderTests
     public void EskeTest()
     {
         var stream = new MemoryStream("[\r\n\"0\"\r\n]\r\n"u8.ToArray());
+        var reader = new Utf8JsonStreamReader();
         int c = 0;
-        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        reader.Read(stream, (ref Utf8JsonReader reader) =>
         {
             if (c == 0)
                 Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
@@ -188,9 +211,10 @@ public class Utf8JsonStreamReaderTests
     public void Eske3Test()
     {
         var stream = File.Open(Path.Join("Data", "A2MB_Json_BraceOnBorder.json"), FileMode.Open);
+        var reader = new Utf8JsonStreamReader();
         int balO = 0;
         int balA = 0;
-        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        reader.Read(stream, (ref Utf8JsonReader reader) =>
         {
             switch (reader.TokenType)
             {

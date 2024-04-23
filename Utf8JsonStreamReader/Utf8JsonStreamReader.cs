@@ -2,18 +2,25 @@ using System.Text.Json;
 
 namespace Wololo.Text.Json;
 
-public static class Utf8JsonStreamReader
+public sealed class Utf8JsonStreamReader
 {
+    bool done = false;
+    Memory<byte> buffer;
+    int bufferSize;
+    int bufferLength = 0;
+    int offset = 0;
+    JsonReaderState jsonReaderState = new();
+
     public delegate void OnRead(ref Utf8JsonReader reader);
 
-    public static void Read(Stream stream, OnRead action, int bufferSize = -1)
+    public Utf8JsonStreamReader(int bufferSize = -1)
     {
-        bufferSize = bufferSize <= 0 ? 1024 * 8 : bufferSize;
-        bool done = false;
-        Memory<byte> buffer = new byte[bufferSize];
-        int bufferLength = 0;
-        int offset = 0;
-        JsonReaderState jsonReaderState = new();
+        this.bufferSize = bufferSize <= 0 ? 1024 * 8 : bufferSize;
+        buffer = new byte[this.bufferSize];
+    }
+
+    public void Read(Stream stream, OnRead onRead)
+    {
         while (!done)
         {
             var remaining = bufferLength - offset;
@@ -23,11 +30,31 @@ public static class Utf8JsonStreamReader
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
-            while (reader.Read())
-                action(ref reader);
-            jsonReaderState = reader.CurrentState;
-            offset = (int)reader.BytesConsumed;
+            ReadBuffer(onRead);
         }
+    }
+
+    public async Task ReadAsync(Stream stream, OnRead onRead)
+    {
+        while (!done)
+        {
+            var remaining = bufferLength - offset;
+            if (remaining > 0)
+                buffer[offset..].CopyTo(buffer);
+            var readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false);
+            bufferLength = readLength + remaining;
+            offset = 0;
+            done = bufferLength < bufferSize;
+            ReadBuffer(onRead);
+        }
+    }
+
+    private void ReadBuffer(OnRead onRead)
+    {
+        var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
+        while (reader.Read())
+            onRead(ref reader);
+        jsonReaderState = reader.CurrentState;
+        offset = (int)reader.BytesConsumed;
     }
 }

@@ -49,9 +49,21 @@ public class Program
         public void TraverseUtf8JsonStreamReader()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-            Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) => {
+            var reader = new Utf8JsonStreamReader();
+            reader.Read(stream, (ref Utf8JsonReader reader) => {
                 _ = reader.TokenType;
                 _ = Utf8JsonHelpers.GetValue(ref reader);
+            });
+        }
+
+        [Benchmark]
+        public void TraverseUtf8JsonStreamReaderRawValue()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader();
+            reader.Read(stream, (ref Utf8JsonReader reader) => {
+                _ = reader.TokenType;
+                _ = reader.ValueSpan;
             });
         }
 
