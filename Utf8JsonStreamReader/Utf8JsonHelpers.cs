@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Wololo.Text.Json;
 
-internal static class Utf8JsonHelpers
+public static class Utf8JsonHelpers
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static object? GetNumber(ref Utf8JsonReader reader)

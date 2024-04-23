@@ -46,61 +46,13 @@ public class Program
         }
 
         [Benchmark]
-        public async Task TraverseUtf8JsonStreamReaderAsync()
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-            var reader = new Utf8JsonStreamReader(stream, -1, true);
-            while (await reader.ReadAsync() == true)
-            {
-                _ = reader.TokenType;
-                _ = reader.Value;
-            }
-        }
-
-        [Benchmark]
         public void TraverseUtf8JsonStreamReader()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-            var reader = new Utf8JsonStreamReader(stream);
-            while (reader.Read())
-            {
+            Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) => {
                 _ = reader.TokenType;
-                _ = reader.Value;
-            }
-        }
-
-        [Benchmark]
-        public async Task TraverseUtf8JsonStreamTokenAsyncEnumerable()
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-            await foreach (var result in new Utf8JsonStreamTokenAsyncEnumerable(stream))
-            {
-                _ = result.TokenType;
-                _ = result.Value;
-            }
-        }
-
-        [Benchmark]
-        public void TraverseUtf8JsonStreamTokenEnumerable()
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-            foreach (var result in new Utf8JsonStreamTokenEnumerable(stream))
-            {
-                _ = result.TokenType;
-                _ = result.Value;
-            }
-        }
-
-        [Benchmark]
-        public async Task TraverseNewtonsoftJsonTextReaderAsync()
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-            var reader = new Newtonsoft.Json.JsonTextReader(new StreamReader(stream));
-            while (await reader.ReadAsync() == true)
-            {
-                _ = reader.TokenType;
-                _ = reader.Value;
-            }
+                _ = Utf8JsonHelpers.GetValue(ref reader);
+            });
         }
 
         [Benchmark]

@@ -2,48 +2,32 @@ using System.Text.Json;
 
 namespace Wololo.Text.Json;
 
-public sealed class Utf8JsonStreamReader : IDisposable, IAsyncDisposable
+public static class Utf8JsonStreamReader
 {
-    private readonly IEnumerator<JsonResult>? enumerator = null;
-    private readonly IAsyncEnumerator<JsonResult>? asyncEnumerator = null;
+    public delegate void OnRead(ref Utf8JsonReader reader);
 
-    public JsonTokenType TokenType { get; private set; } = JsonTokenType.None;
-    public object? Value { get; private set; }
-
-    public Utf8JsonStreamReader(Stream stream, int bufferSize = -1, bool async = false)
+    public static void Read(Stream stream, OnRead action, int bufferSize = -1)
     {
-        if (async)
-            asyncEnumerator = new Utf8JsonStreamTokenAsyncEnumerable(stream, bufferSize).GetAsyncEnumerator();
-        else
-            enumerator = new Utf8JsonStreamTokenEnumerable(stream, bufferSize).GetEnumerator();
-    }
-
-    public async Task<bool> ReadAsync()
-    {
-        if (!await asyncEnumerator!.MoveNextAsync())
+        bufferSize = bufferSize <= 0 ? 1024 * 8 : bufferSize;
+        bool done = false;
+        Memory<byte> buffer = new byte[bufferSize];
+        int bufferLength = 0;
+        int offset = 0;
+        JsonReaderState jsonReaderState = new();
+        while (!done)
         {
-            TokenType = JsonTokenType.None;
-            Value = null;
-            return false;
+            var remaining = bufferLength - offset;
+            if (remaining > 0)
+                buffer[offset..].CopyTo(buffer);
+            var readLength = stream.ReadAtLeast(buffer[remaining..].Span, bufferSize - remaining, false);
+            bufferLength = readLength + remaining;
+            offset = 0;
+            done = bufferLength < bufferSize;
+            var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
+            while (reader.Read())
+                action(ref reader);
+            jsonReaderState = reader.CurrentState;
+            offset = (int)reader.BytesConsumed;
         }
-        TokenType = asyncEnumerator.Current.TokenType;
-        Value = asyncEnumerator.Current.Value;
-        return true;
     }
-
-    public bool Read()
-    {
-        if (!enumerator!.MoveNext())
-        {
-            TokenType = JsonTokenType.None;
-            Value = null;
-            return false;
-        }
-        TokenType = enumerator.Current.TokenType;
-        Value = enumerator.Current.Value;
-        return true;
-    }
-
-    public void Dispose() => enumerator?.Dispose();
-    public ValueTask DisposeAsync() => asyncEnumerator!.DisposeAsync();
 }

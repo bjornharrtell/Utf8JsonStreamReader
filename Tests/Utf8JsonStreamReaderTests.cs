@@ -47,173 +47,150 @@ public class Utf8JsonStreamReaderTests
         new string[] { "0" }
     );
 
+    static void AssertInt16(short value, ref Utf8JsonReader reader)
+    {
+        Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
+        Assert.AreEqual(value, reader.GetInt16());
+    }
+
+    static void AssertString(string name, ref Utf8JsonReader reader)
+    {
+        Assert.AreEqual(JsonTokenType.String, reader.TokenType);
+        Assert.AreEqual(name, reader.GetString());
+    }
+
+    static void AssertPropertyName(string name, ref Utf8JsonReader reader)
+    {
+        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
+        Assert.AreEqual(name, reader.GetString());
+    }
+
     [TestMethod]
-    public async Task BasicTest()
+    public void BasicTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonBasic));
-        var reader = new Utf8JsonStreamReader(stream, -1, true);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("Id", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
-        Assert.AreEqual((short)2, reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("NegativeId", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
-        Assert.AreEqual((short)-23, reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("TimeStamp", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.String, reader.TokenType);
-        Assert.AreEqual("2012-10-21T00:00:00+05:30", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("Status", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.False, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("Num", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(13434934.23233434, reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("NumD", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(1.343493434534523233434, reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("Long", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(9223372036854775807L, reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
-        var result = await reader.ReadAsync();
-        Assert.AreEqual(false, result);
+        int c = 0;
+        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        {
+            if (c == 0)
+                Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
+            else if (c == 1)
+                AssertPropertyName("Id", ref reader);
+            else if (c == 2)
+                AssertInt16(2, ref reader);
+            else if (c == 3)
+                AssertPropertyName("NegativeId", ref reader);
+            else if (c == 4)
+                AssertInt16(-23, ref reader);
+            else if (c == 5)
+                AssertPropertyName("TimeStamp", ref reader);
+            else if (c == 6)
+                AssertString("2012-10-21T00:00:00+05:30", ref reader);
+            else if (c == 7)
+                AssertPropertyName("Status", ref reader);
+            else if (c == 8)
+                Assert.AreEqual(JsonTokenType.False, reader.TokenType);
+            else if (c == 9)
+                AssertPropertyName("Num", ref reader);
+            else if (c == 10)
+                Assert.AreEqual(13434934.23233434, reader.GetDouble());
+            else if (c == 11)
+                AssertPropertyName("NumD", ref reader);
+            else if (c == 12)
+                Assert.AreEqual(1.343493434534523233434, reader.GetDouble());
+            else if (c == 13)
+                AssertPropertyName("Long", ref reader);
+            else if (c == 14)
+                Assert.AreEqual(9223372036854775807L, reader.GetInt64());
+            else if (c == 15)
+                Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
+            c++;
+        });
     }
 
     [TestMethod]
-    public async Task NestedTest()
+    public void NestedTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonNested));
-        var reader = new Utf8JsonStreamReader(stream, -1, true);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("Array", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.PropertyName, reader.TokenType);
-        Assert.AreEqual("Id", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
-        Assert.AreEqual((short)1, reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
-        var result = await reader.ReadAsync();
-        Assert.AreEqual(false, result);
+        int c = 0;
+        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        {
+            if (c == 0)
+                Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
+            else if (c == 1)
+                AssertPropertyName("Array", ref reader);
+            else if (c == 2)
+                Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+            else if (c == 3)
+                Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
+            else if (c == 4)
+                AssertPropertyName("Id", ref reader);
+            else if (c == 5)
+                AssertInt16(1, ref reader);
+            else if (c == 6)
+                Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
+            else if (c == 7)
+                Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+            else if (c == 8)
+                Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
+            c++;
+        });
     }
 
     [TestMethod]
-    public async Task ArrayTest()
+    public void ArrayTest()
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
-        var reader = new Utf8JsonStreamReader(stream, -1, true);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.String, reader.TokenType);
-        Assert.AreEqual("0", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-        var result = await reader.ReadAsync();
-        Assert.AreEqual(false, result);
+        int c = 0;
+        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        {
+            if (c == 0)
+                Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+            else if (c == 1)
+                AssertString("0", ref reader);
+            else if (c == 2)
+                Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+            c++;
+        });
     }
 
     [TestMethod]
-    public void ArraySyncTest()
-    {
-        var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
-        var reader = new Utf8JsonStreamReader(stream);
-        reader.Read();
-        Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
-        reader.Read();
-        Assert.AreEqual(JsonTokenType.String, reader.TokenType);
-        Assert.AreEqual("0", reader.Value);
-        reader.Read();
-        Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-        var result = reader.Read();
-        Assert.AreEqual(false, result);
-    }
-
-    [TestMethod]
-    public async Task SingleValueTest()
+    public void SingleValueTest()
     {
         var stream = new MemoryStream("0"u8.ToArray());
-        var reader = new Utf8JsonStreamReader(stream, -1, true);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.Number, reader.TokenType);
-        Assert.AreEqual((short)0, reader.Value);
-        var result = await reader.ReadAsync();
-        Assert.AreEqual(false, result);
+        int c = 0;
+        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        {
+            if (c == 0)
+                AssertInt16(0, ref reader);
+            c++;
+        });
     }
 
     [TestMethod]
-    public async Task EskeTest()
+    public void EskeTest()
     {
         var stream = new MemoryStream("[\r\n\"0\"\r\n]\r\n"u8.ToArray());
-        var reader = new Utf8JsonStreamReader(stream, -1, true);
-        Assert.AreEqual(JsonTokenType.None, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.String, reader.TokenType);
-        Assert.AreEqual("0", reader.Value);
-        await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-        var result = await reader.ReadAsync();
-        Assert.AreEqual(JsonTokenType.None, reader.TokenType);
-        Assert.AreEqual(false, result);
-    }
-
-    [TestMethod]
-    public async Task Eske2Test()
-    {
-        var stream = new MemoryStream("[\r\n\"0\"\r\n]\r\n"u8.ToArray());
-        var e = new Utf8JsonStreamTokenAsyncEnumerable(stream).GetAsyncEnumerator();
-        await e.MoveNextAsync();
-        Assert.AreEqual(JsonTokenType.StartArray, e.Current.TokenType);
-        await e.MoveNextAsync();
-        Assert.AreEqual(JsonTokenType.String, e.Current.TokenType);
-        Assert.AreEqual("0", e.Current.Value);
-        await e.MoveNextAsync();
-        Assert.AreEqual(JsonTokenType.EndArray, e.Current.TokenType);
-        var result = await e.MoveNextAsync();
-        Assert.AreEqual(false, result);
+        int c = 0;
+        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
+        {
+            if (c == 0)
+                Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+            else if (c == 1)
+                AssertString("0", ref reader);
+            else if (c == 2)
+                Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+            c++;
+        });
     }
 
     [TestMethod]
     public void Eske3Test()
     {
         var stream = File.Open(Path.Join("Data", "A2MB_Json_BraceOnBorder.json"), FileMode.Open);
-        Utf8JsonStreamReader reader = new(stream);
         int balO = 0;
         int balA = 0;
-        while (reader.Read())
+        Utf8JsonStreamReader.Read(stream, (ref Utf8JsonReader reader) =>
         {
             switch (reader.TokenType)
             {
@@ -228,7 +205,7 @@ public class Utf8JsonStreamReaderTests
                     balO--;
                     break;
                 case JsonTokenType.PropertyName:
-                    _ = reader.Value;
+                    _ = reader.GetString();
                     break;
                 case JsonTokenType.EndArray:
                     Assert.IsTrue(0 < balA);
@@ -241,12 +218,12 @@ public class Utf8JsonStreamReaderTests
                 case JsonTokenType.True:
                 case JsonTokenType.False:
                 case JsonTokenType.Null:
-                    _ = reader.Value;
+                    _ = reader.GetString();
                     break;
                 default:
                     throw new($"Unexpected token in this state, expecting value, got {reader.TokenType}");
             }
-        }
+        });
         Assert.AreEqual(0, balA);
         Assert.AreEqual(0, balO);
     }

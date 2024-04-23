@@ -2,9 +2,6 @@
 
 A streaming JSON parser based on System.Text.Json.Utf8JsonReader.
 
-Underlying implementations are `Utf8JsonStreamTokenEnumerable` or
-`Utf8JsonStreamTokenAsyncEnumerable` which are also available for use directly.
-
 ## Performance
 
 Results produced by:
