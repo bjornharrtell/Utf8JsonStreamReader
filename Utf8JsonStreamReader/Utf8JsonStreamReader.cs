@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Wololo.Text.Json;
 
-public sealed class Utf8JsonStreamReader
+public sealed partial class Utf8JsonStreamReader
 {
     bool done = false;
     Memory<byte> buffer;
@@ -12,8 +12,6 @@ public sealed class Utf8JsonStreamReader
     JsonReaderState jsonReaderState = new();
 
     public delegate void OnRead(ref Utf8JsonReader reader);
-
-    public readonly record struct JsonResult(JsonTokenType TokenType = JsonTokenType.None, object? Value = null);
 
     public Utf8JsonStreamReader(int bufferSize = -1)
     {
@@ -62,8 +60,8 @@ public sealed class Utf8JsonStreamReader
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            var results = new List<JsonResult>();
-            ReadBuffer((ref Utf8JsonReader reader) => results.Append(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
+            var results = new Queue<JsonResult>();
+            ReadBuffer((ref Utf8JsonReader reader) => results.Enqueue(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
             foreach (var item in results)
                 yield return item;
         }
@@ -80,8 +78,8 @@ public sealed class Utf8JsonStreamReader
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            var results = new List<JsonResult>();
-            ReadBuffer((ref Utf8JsonReader reader) => results.Append(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
+            var results = new Queue<JsonResult>();
+            ReadBuffer((ref Utf8JsonReader reader) => results.Enqueue(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
             foreach (var item in results)
                 yield return item;
         }
