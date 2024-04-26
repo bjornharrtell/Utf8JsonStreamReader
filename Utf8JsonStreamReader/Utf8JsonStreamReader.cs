@@ -13,6 +13,8 @@ public sealed class Utf8JsonStreamReader
 
     public delegate void OnRead(ref Utf8JsonReader reader);
 
+    public readonly record struct JsonResult(JsonTokenType TokenType = JsonTokenType.None, object? Value = null);
+
     public Utf8JsonStreamReader(int bufferSize = -1)
     {
         this.bufferSize = bufferSize <= 0 ? 1024 * 8 : bufferSize;
@@ -46,6 +48,42 @@ public sealed class Utf8JsonStreamReader
             offset = 0;
             done = bufferLength < bufferSize;
             ReadBuffer(onRead);
+        }
+    }
+
+    public IEnumerable<JsonResult> ToEnumerable(Stream stream)
+    {
+        while (!done)
+        {
+            var remaining = bufferLength - offset;
+            if (remaining > 0)
+                buffer[offset..].CopyTo(buffer);
+            var readLength = stream.ReadAtLeast(buffer[remaining..].Span, bufferSize - remaining, false);
+            bufferLength = readLength + remaining;
+            offset = 0;
+            done = bufferLength < bufferSize;
+            var results = new List<JsonResult>();
+            ReadBuffer((ref Utf8JsonReader reader) => results.Append(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
+            foreach (var item in results)
+                yield return item;
+        }
+    }
+
+    public async IAsyncEnumerable<JsonResult> ToAsyncEnumerable(Stream stream)
+    {
+        while (!done)
+        {
+            var remaining = bufferLength - offset;
+            if (remaining > 0)
+                buffer[offset..].CopyTo(buffer);
+            var readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false);
+            bufferLength = readLength + remaining;
+            offset = 0;
+            done = bufferLength < bufferSize;
+            var results = new List<JsonResult>();
+            ReadBuffer((ref Utf8JsonReader reader) => results.Append(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
+            foreach (var item in results)
+                yield return item;
         }
     }
 

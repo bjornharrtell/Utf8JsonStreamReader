@@ -176,6 +176,44 @@ public class Utf8JsonStreamReaderTests
     }
 
     [TestMethod]
+    public void ArrayEnumerableTest()
+    {
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
+        var reader = new Utf8JsonStreamReader();
+        var e = reader.ToEnumerable(stream);
+        int c = 0;
+        foreach (var item in e)
+        {
+            if (c == 0)
+                Assert.AreEqual(JsonTokenType.StartArray, item.TokenType);
+            else if (c == 1)
+                Assert.AreEqual("0", item.Value);
+            else if (c == 2)
+                Assert.AreEqual(JsonTokenType.EndArray, item.TokenType);
+            c++;
+        }
+    }
+
+    [TestMethod]
+    public async Task ArrayAsyncEnumerableTest()
+    {
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
+        var reader = new Utf8JsonStreamReader();
+        var e = reader.ToAsyncEnumerable(stream);
+        int c = 0;
+        await foreach (var item in e)
+        {
+            if (c == 0)
+                Assert.AreEqual(JsonTokenType.StartArray, item.TokenType);
+            else if (c == 1)
+                Assert.AreEqual("0", item.Value);
+            else if (c == 2)
+                Assert.AreEqual(JsonTokenType.EndArray, item.TokenType);
+            c++;
+        }
+    }
+
+    [TestMethod]
     public void SingleValueTest()
     {
         var stream = new MemoryStream("0"u8.ToArray());

@@ -57,6 +57,17 @@ public class Program
         }
 
         [Benchmark]
+        public async Task TraverseUtf8JsonStreamReaderAsync()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader();
+            await reader.ReadAsync(stream, (ref Utf8JsonReader reader) => {
+                _ = reader.TokenType;
+                _ = Utf8JsonHelpers.GetValue(ref reader);
+            });
+        }
+
+        [Benchmark]
         public void TraverseUtf8JsonStreamReaderRawValue()
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
@@ -65,6 +76,28 @@ public class Program
                 _ = reader.TokenType;
                 _ = reader.ValueSpan;
             });
+        }
+
+        [Benchmark]
+        public void TraverseUtf8JsonStreamReaderToEnumerable()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader();
+            foreach (var item in reader.ToEnumerable(stream)) {
+                _ = item.TokenType;
+                _ = item.Value;
+            }
+        }
+
+        [Benchmark]
+        public async Task TraverseUtf8JsonStreamReaderToAsyncEnumerable()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader();
+            await foreach (var item in reader.ToAsyncEnumerable(stream)) {
+                _ = item.TokenType;
+                _ = item.Value;
+            }
         }
 
         [Benchmark]
