@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace Wololo.Text.Json;
@@ -5,8 +6,8 @@ namespace Wololo.Text.Json;
 public sealed partial class Utf8JsonStreamReader
 {
     bool done = false;
-    Memory<byte> buffer;
-    int bufferSize;
+    readonly Memory<byte> buffer;
+    readonly int bufferSize;
     int bufferLength = 0;
     int offset = 0;
     JsonReaderState jsonReaderState = new();
@@ -51,6 +52,7 @@ public sealed partial class Utf8JsonStreamReader
 
     public IEnumerable<JsonResult> ToEnumerable(Stream stream)
     {
+        var results = new List<JsonResult>();
         while (!done)
         {
             var remaining = bufferLength - offset;
@@ -60,28 +62,32 @@ public sealed partial class Utf8JsonStreamReader
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            var results = new Queue<JsonResult>();
-            ReadBuffer((ref Utf8JsonReader reader) => results.Enqueue(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
+            ReadBuffer((ref Utf8JsonReader reader) => results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
             foreach (var item in results)
                 yield return item;
+            results.Clear();
         }
     }
 
-    public async IAsyncEnumerable<JsonResult> ToAsyncEnumerable(Stream stream)
+    public async IAsyncEnumerable<JsonResult> ToAsyncEnumerable(Stream stream, [EnumeratorCancellation] CancellationToken token = default)
     {
+        var results = new List<JsonResult>();
         while (!done)
         {
             var remaining = bufferLength - offset;
             if (remaining > 0)
                 buffer[offset..].CopyTo(buffer);
-            var readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false);
+            var readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            var results = new Queue<JsonResult>();
-            ReadBuffer((ref Utf8JsonReader reader) => results.Enqueue(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
+            ReadBuffer((ref Utf8JsonReader reader) =>
+                results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
             foreach (var item in results)
                 yield return item;
+            results.Clear();
+            if (token.IsCancellationRequested)
+                break;
         }
     }
 

@@ -9,6 +9,12 @@ namespace Tests;
 [TestClass]
 public class Utf8JsonStreamReaderTests
 {
+    readonly static JsonSerializerOptions jsonSerializerOptions = new()
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = false
+        };
+
     readonly string jsonBasic = JsonSerializer.Serialize(
         new
         {
@@ -20,11 +26,7 @@ public class Utf8JsonStreamReaderTests
             NumD = 1.343493434534523233434,
             Long = 9223372036854775807L
         },
-        new JsonSerializerOptions()
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = false
-        }
+        jsonSerializerOptions
     );
 
     readonly string jsonNested = JsonSerializer.Serialize(
@@ -36,16 +38,10 @@ public class Utf8JsonStreamReaderTests
                 }
             }
         },
-        new JsonSerializerOptions()
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = false
-        }
+        jsonSerializerOptions
     );
 
-    readonly string jsonArray = JsonSerializer.Serialize(
-        new string[] { "0" }
-    );
+    readonly string jsonArray = JsonSerializer.Serialize(new string[] { "0" });
 
     static void AssertInt16(short value, ref Utf8JsonReader reader)
     {
