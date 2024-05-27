@@ -10,10 +10,10 @@ namespace Tests;
 public class Utf8JsonStreamReaderTests
 {
     readonly static JsonSerializerOptions jsonSerializerOptions = new()
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = false
-        };
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        WriteIndented = false
+    };
 
     readonly string jsonBasic = JsonSerializer.Serialize(
         new

@@ -50,7 +50,8 @@ public class Program
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader();
-            reader.Read(stream, (ref Utf8JsonReader reader) => {
+            reader.Read(stream, (ref Utf8JsonReader reader) =>
+            {
                 _ = reader.TokenType;
                 _ = Utf8JsonHelpers.GetValue(ref reader);
             });
@@ -61,7 +62,8 @@ public class Program
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader();
-            await reader.ReadAsync(stream, (ref Utf8JsonReader reader) => {
+            await reader.ReadAsync(stream, (ref Utf8JsonReader reader) =>
+            {
                 _ = reader.TokenType;
                 _ = Utf8JsonHelpers.GetValue(ref reader);
             });
@@ -72,7 +74,8 @@ public class Program
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader();
-            reader.Read(stream, (ref Utf8JsonReader reader) => {
+            reader.Read(stream, (ref Utf8JsonReader reader) =>
+            {
                 _ = reader.TokenType;
                 _ = reader.ValueSpan;
             });
@@ -83,7 +86,8 @@ public class Program
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader();
-            foreach (var item in reader.ToEnumerable(stream)) {
+            foreach (var item in reader.ToEnumerable(stream))
+            {
                 _ = item.TokenType;
                 _ = item.Value;
             }
@@ -94,7 +98,8 @@ public class Program
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader();
-            await foreach (var item in reader.ToAsyncEnumerable(stream)) {
+            await foreach (var item in reader.ToAsyncEnumerable(stream))
+            {
                 _ = item.TokenType;
                 _ = item.Value;
             }
