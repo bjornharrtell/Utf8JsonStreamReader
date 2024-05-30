@@ -54,6 +54,7 @@ public class Program
             {
                 _ = reader.TokenType;
                 _ = Utf8JsonHelpers.GetValue(ref reader);
+                return true;
             });
         }
 
@@ -66,6 +67,7 @@ public class Program
             {
                 _ = reader.TokenType;
                 _ = Utf8JsonHelpers.GetValue(ref reader);
+                return true;
             });
         }
 
@@ -78,6 +80,7 @@ public class Program
             {
                 _ = reader.TokenType;
                 _ = reader.ValueSpan;
+                return true;
             });
         }
 
