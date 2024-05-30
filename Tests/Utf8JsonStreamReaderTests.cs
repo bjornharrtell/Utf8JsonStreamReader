@@ -102,6 +102,7 @@ public class Utf8JsonStreamReaderTests
             else if (c == 15)
                 Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
             c++;
+            return true;
         });
     }
 
@@ -132,6 +133,7 @@ public class Utf8JsonStreamReaderTests
             else if (c == 8)
                 Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
             c++;
+            return true;
         });
     }
 
@@ -150,6 +152,7 @@ public class Utf8JsonStreamReaderTests
             else if (c == 2)
                 Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
             c++;
+            return true;
         });
     }
 
@@ -168,6 +171,7 @@ public class Utf8JsonStreamReaderTests
             else if (c == 2)
                 Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
             c++;
+            return true;
         });
     }
 
@@ -234,6 +238,7 @@ public class Utf8JsonStreamReaderTests
             if (c == 0)
                 AssertInt16(0, ref reader);
             c++;
+            return true;
         });
     }
 
@@ -252,6 +257,7 @@ public class Utf8JsonStreamReaderTests
             else if (c == 2)
                 Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
             c++;
+            return true;
         });
     }
 
@@ -295,6 +301,7 @@ public class Utf8JsonStreamReaderTests
                 default:
                     throw new($"Unexpected token in this state, expecting value, got {reader.TokenType}");
             }
+            return true;
         });
         Assert.AreEqual(0, balA);
         Assert.AreEqual(0, balO);

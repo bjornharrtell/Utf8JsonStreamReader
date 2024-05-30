@@ -12,7 +12,7 @@ public sealed partial class Utf8JsonStreamReader
     int offset = 0;
     JsonReaderState jsonReaderState = new();
 
-    public delegate void OnRead(ref Utf8JsonReader reader);
+    public delegate bool OnRead(ref Utf8JsonReader reader);
 
     public Utf8JsonStreamReader(int bufferSize = -1)
     {
@@ -20,7 +20,7 @@ public sealed partial class Utf8JsonStreamReader
         buffer = new byte[this.bufferSize];
     }
 
-    public void Read(Stream stream, OnRead onRead)
+    public bool Read(Stream stream, OnRead onRead)
     {
         while (!done)
         {
@@ -31,23 +31,25 @@ public sealed partial class Utf8JsonStreamReader
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            ReadBuffer(onRead);
+            if (!ReadBuffer(onRead)) return false;
         }
+        return true;
     }
 
-    public async Task ReadAsync(Stream stream, OnRead onRead)
+    public async Task<bool> ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
         while (!done)
         {
             var remaining = bufferLength - offset;
             if (remaining > 0)
                 buffer[offset..].CopyTo(buffer);
-            var readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false);
+            var readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            ReadBuffer(onRead);
+            if (!ReadBuffer(onRead)) return false;
         }
+        return true;
     }
 
     public IEnumerable<JsonResult> ToEnumerable(Stream stream)
@@ -62,7 +64,11 @@ public sealed partial class Utf8JsonStreamReader
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            ReadBuffer((ref Utf8JsonReader reader) => results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
+            ReadBuffer((ref Utf8JsonReader reader) =>
+            {
+                results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)));
+                return true;
+            });
             foreach (var item in results)
                 yield return item;
             results.Clear();
@@ -82,7 +88,10 @@ public sealed partial class Utf8JsonStreamReader
             offset = 0;
             done = bufferLength < bufferSize;
             ReadBuffer((ref Utf8JsonReader reader) =>
-                results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader))));
+            {
+                results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)));
+                return !token.IsCancellationRequested;
+            });
             foreach (var item in results)
                 yield return item;
             results.Clear();
@@ -91,12 +100,14 @@ public sealed partial class Utf8JsonStreamReader
         }
     }
 
-    private void ReadBuffer(OnRead onRead)
+    private bool ReadBuffer(OnRead onRead)
     {
         var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
         while (reader.Read())
-            onRead(ref reader);
+            if (!onRead(ref reader))
+                return false;
         jsonReaderState = reader.CurrentState;
         offset = (int)reader.BytesConsumed;
+        return true;
     }
 }
