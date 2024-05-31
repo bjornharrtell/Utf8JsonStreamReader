@@ -108,6 +108,8 @@ public sealed partial class Utf8JsonStreamReader
                 return false;
         jsonReaderState = reader.CurrentState;
         offset = (int)reader.BytesConsumed;
+        if (offset == 0)
+            throw new Exception("Failure to parse JSON token buffer is to small");
         return true;
     }
 }
