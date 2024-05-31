@@ -12,7 +12,7 @@ public sealed partial class Utf8JsonStreamReader
     int offset = 0;
     JsonReaderState jsonReaderState = new();
 
-    public delegate bool OnRead(ref Utf8JsonReader reader);
+    public delegate void OnRead(ref Utf8JsonReader reader);
 
     public Utf8JsonStreamReader(int bufferSize = -1)
     {
@@ -31,7 +31,7 @@ public sealed partial class Utf8JsonStreamReader
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            if (!ReadBuffer(onRead)) return false;
+            ReadBuffer(onRead);
         }
         return true;
     }
@@ -47,7 +47,7 @@ public sealed partial class Utf8JsonStreamReader
             bufferLength = readLength + remaining;
             offset = 0;
             done = bufferLength < bufferSize;
-            if (!ReadBuffer(onRead)) return false;
+            ReadBuffer(onRead);
         }
         return true;
     }
@@ -65,10 +65,8 @@ public sealed partial class Utf8JsonStreamReader
             offset = 0;
             done = bufferLength < bufferSize;
             ReadBuffer((ref Utf8JsonReader reader) =>
-            {
-                results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)));
-                return true;
-            });
+                results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)))
+            );
             foreach (var item in results)
                 yield return item;
             results.Clear();
@@ -88,10 +86,8 @@ public sealed partial class Utf8JsonStreamReader
             offset = 0;
             done = bufferLength < bufferSize;
             ReadBuffer((ref Utf8JsonReader reader) =>
-            {
-                results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)));
-                return !token.IsCancellationRequested;
-            });
+                results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)))
+            );
             foreach (var item in results)
                 yield return item;
             results.Clear();
@@ -100,16 +96,14 @@ public sealed partial class Utf8JsonStreamReader
         }
     }
 
-    private bool ReadBuffer(OnRead onRead)
+    private void ReadBuffer(OnRead onRead)
     {
         var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
         while (reader.Read())
-            if (!onRead(ref reader))
-                return false;
+            onRead(ref reader);
         jsonReaderState = reader.CurrentState;
         offset = (int)reader.BytesConsumed;
         if (offset == 0)
             throw new Exception("Failure to parse JSON token buffer is to small");
-        return true;
     }
 }
