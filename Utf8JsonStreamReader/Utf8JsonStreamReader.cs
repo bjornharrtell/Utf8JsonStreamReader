@@ -20,7 +20,7 @@ public sealed partial class Utf8JsonStreamReader
         buffer = new byte[this.bufferSize];
     }
 
-    public bool Read(Stream stream, OnRead onRead)
+    public void Read(Stream stream, OnRead onRead)
     {
         while (!done)
         {
@@ -33,10 +33,9 @@ public sealed partial class Utf8JsonStreamReader
             done = bufferLength < bufferSize;
             ReadBuffer(onRead);
         }
-        return true;
     }
 
-    public async Task<bool> ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
+    public async ValueTask ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
         while (!done)
         {
@@ -49,7 +48,6 @@ public sealed partial class Utf8JsonStreamReader
             done = bufferLength < bufferSize;
             ReadBuffer(onRead);
         }
-        return true;
     }
 
     public IEnumerable<JsonResult> ToEnumerable(Stream stream)
