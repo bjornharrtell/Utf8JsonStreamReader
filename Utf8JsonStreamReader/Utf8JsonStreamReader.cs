@@ -18,7 +18,7 @@ public sealed partial class Utf8JsonStreamReader
 
     public Utf8JsonStreamReader(int bufferSize = -1)
     {
-        this.bufferSize = bufferSize <= 0 ? 1024 * 8 : bufferSize;
+        this.bufferSize = bufferSize <= 0 ? 1024 * 32 : bufferSize;
         buffer = new byte[this.bufferSize];
     }
 
