@@ -29,19 +29,11 @@ public sealed partial class Utf8JsonStreamReader
             buffer[offset..].CopyTo(buffer);
     }
 
-    void ReadRemaining(OnRead onRead)
-    {
-        bufferLength = readLength + remaining;
-        offset = 0;
-        done = bufferLength < bufferSize;
-        ReadBuffer(onRead);
-    }
-
     void ReadStream(Stream stream, OnRead onRead)
     {
         CopyRemaining();
         readLength = stream.ReadAtLeast(buffer[remaining..].Span, bufferSize - remaining, false);
-        ReadRemaining(onRead);
+        ReadBuffer(onRead);
     }
 
     public void Read(Stream stream, OnRead onRead)
@@ -54,7 +46,7 @@ public sealed partial class Utf8JsonStreamReader
     {
         CopyRemaining();
         readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
-        ReadRemaining(onRead);
+        ReadBuffer(onRead);
     }
 
     public async ValueTask ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
@@ -94,6 +86,9 @@ public sealed partial class Utf8JsonStreamReader
 
     private void ReadBuffer(OnRead onRead)
     {
+        bufferLength = readLength + remaining;
+        offset = 0;
+        done = bufferLength < bufferSize;
         var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
         while (reader.Read())
             onRead(ref reader);
