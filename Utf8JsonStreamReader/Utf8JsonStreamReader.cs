@@ -45,14 +45,14 @@ public sealed partial class Utf8JsonStreamReader
     async ValueTask ReadStreamAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
         CopyRemaining();
-        readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
+        readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token).ConfigureAwait(false);
         ReadBuffer(onRead);
     }
 
     public async ValueTask ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
         while (!done)
-            await ReadStreamAsync(stream, onRead, token);
+            await ReadStreamAsync(stream, onRead, token).ConfigureAwait(false);
     }
 
     static void AccumulateResults(ref Utf8JsonReader reader, List<JsonResult> results) =>
@@ -75,7 +75,7 @@ public sealed partial class Utf8JsonStreamReader
         var results = new List<JsonResult>();
         while (!done)
         {
-            await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), token);
+            await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), token).ConfigureAwait(false);
             foreach (var item in results)
                 yield return item;
             results.Clear();
