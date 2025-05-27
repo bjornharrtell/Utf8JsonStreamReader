@@ -18,10 +18,10 @@ AMD Ryzen 7 PRO 8840U w/ Radeon 780M Graphics 5.13GHz, 1 CPU, 16 logical and 8 p
 
 | Method                                        | Objects | Mean     | Error    | StdDev   |
 |---------------------------------------------- |-------- |---------:|---------:|---------:|
-| TraverseUtf8JsonStreamReader                  | 100000  | 32.10 ms | 0.142 ms | 0.126 ms |
-| TraverseUtf8JsonStreamReaderAsync             | 100000  | 32.32 ms | 0.197 ms | 0.175 ms |
-| TraverseUtf8JsonStreamReaderRawValue          | 100000  | 15.74 ms | 0.084 ms | 0.078 ms |
-| TraverseUtf8JsonStreamReaderToEnumerable      | 100000  | 45.51 ms | 0.538 ms | 0.503 ms |
-| TraverseUtf8JsonStreamReaderToAsyncEnumerable | 100000  | 62.60 ms | 1.232 ms | 1.767 ms |
-| TraverseNewtonsoftJsonTextReader              | 100000  | 53.90 ms | 0.955 ms | 0.846 ms |
+| TraverseUtf8JsonStreamReader                  | 100000  | 31.99 ms | 0.180 ms | 0.160 ms |
+| TraverseUtf8JsonStreamReaderAsync             | 100000  | 33.27 ms | 0.652 ms | 0.610 ms |
+| TraverseUtf8JsonStreamReaderRawValue          | 100000  | 15.81 ms | 0.103 ms | 0.096 ms |
+| TraverseUtf8JsonStreamReaderToEnumerable      | 100000  | 44.29 ms | 0.319 ms | 0.283 ms |
+| TraverseUtf8JsonStreamReaderToAsyncEnumerable | 100000  | 62.25 ms | 1.191 ms | 1.463 ms |
+| TraverseNewtonsoftJsonTextReader              | 100000  | 51.39 ms | 0.289 ms | 0.256 ms |
 ```
