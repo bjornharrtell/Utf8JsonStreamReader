@@ -6,8 +6,8 @@ namespace Wololo.Text.Json;
 public sealed partial class Utf8JsonStreamReader
 {
     bool done = false;
-    readonly byte[] buffer;
-    readonly int bufferSize;
+    byte[] buffer;
+    int bufferSize;
     int bufferLength = 0;
     int offset = 0;
     int remaining = 0;
@@ -30,24 +30,57 @@ public sealed partial class Utf8JsonStreamReader
         return bufferSize - remaining;
     }
 
-    void ReadStream(Stream stream, OnRead onRead)
+    void GrowBuffer()
     {
-        var length = CopyRemaining();
-        readLength = stream.ReadAtLeast(new Span<byte>(buffer, remaining, length), length, false);
-        ReadBuffer(onRead);
+        int newBufferSize = bufferSize * 2;
+        byte[] newBuffer = new byte[newBufferSize];
+        
+        if (bufferLength > 0)
+            Array.Copy(buffer, 0, newBuffer, 0, bufferLength);
+        
+        buffer = newBuffer;
+        bufferSize = newBufferSize;
     }
 
     public void Read(Stream stream, OnRead onRead)
     {
-        while (!done)
-            ReadStream(stream, onRead);
+        ReadAsync(stream, onRead, CancellationToken.None).AsTask().GetAwaiter().GetResult();
+    }
+
+    void ProcessBuffer(OnRead onRead)
+    {
+        bufferLength = readLength + remaining;
+        offset = 0;
+        done = bufferLength < bufferSize;
+        
+        var reader = new Utf8JsonReader(buffer.AsSpan(0, bufferLength), done, jsonReaderState);
+        while (reader.Read())
+            onRead(ref reader);
+        jsonReaderState = reader.CurrentState;
+        offset = (int)reader.BytesConsumed;
     }
 
     async ValueTask ReadStreamAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
-        var length = CopyRemaining();
-        readLength = await stream.ReadAtLeastAsync(new Memory<byte>(buffer, remaining, length), length, false, token).ConfigureAwait(false);
-        ReadBuffer(onRead);
+        while (true)
+        {
+            var length = CopyRemaining();
+            if (length > 0)
+                readLength = await stream.ReadAsync(new Memory<byte>(buffer, remaining, length), token).ConfigureAwait(false);
+            else
+                readLength = 0;
+            ProcessBuffer(onRead);
+            if (offset == 0)
+            {
+                if (!done && bufferSize < 1024 * 1024 * 1024) // Max 1GB buffer to prevent excessive memory usage
+                {
+                    GrowBuffer();
+                    continue;
+                }
+                throw new Exception("Failure to parse JSON token buffer is too small");
+            }
+            break;
+        }
     }
 
     public async ValueTask ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
@@ -64,7 +97,7 @@ public sealed partial class Utf8JsonStreamReader
         var results = new List<JsonResult>(64);
         while (!done)
         {
-            ReadStream(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results));
+            ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), CancellationToken.None).AsTask().GetAwaiter().GetResult();
             foreach (var item in results)
                 yield return item;
             results.Clear();
@@ -83,19 +116,5 @@ public sealed partial class Utf8JsonStreamReader
             if (token.IsCancellationRequested)
                 break;
         }
-    }
-
-    private void ReadBuffer(OnRead onRead)
-    {
-        bufferLength = readLength + remaining;
-        offset = 0;
-        done = bufferLength < bufferSize;
-        var reader = new Utf8JsonReader(buffer.AsSpan(0, bufferLength), done, jsonReaderState);
-        while (reader.Read())
-            onRead(ref reader);
-        jsonReaderState = reader.CurrentState;
-        offset = (int)reader.BytesConsumed;
-        if (offset == 0)
-            throw new Exception("Failure to parse JSON token buffer is too small");
     }
 }
