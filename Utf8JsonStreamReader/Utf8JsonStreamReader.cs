@@ -47,12 +47,11 @@ public sealed partial class Utf8JsonStreamReader
         ReadAsync(stream, onRead, CancellationToken.None).AsTask().GetAwaiter().GetResult();
     }
 
-    void ProcessBuffer(OnRead onRead)
+    void ProcessBuffer(OnRead onRead, bool actualEOF)
     {
         bufferLength = readLength + remaining;
         offset = 0;
-        done = bufferLength < bufferSize;
-        
+        done = actualEOF;
         var reader = new Utf8JsonReader(buffer.AsSpan(0, bufferLength), done, jsonReaderState);
         while (reader.Read())
             onRead(ref reader);
@@ -69,17 +68,16 @@ public sealed partial class Utf8JsonStreamReader
                 readLength = await stream.ReadAsync(new Memory<byte>(buffer, remaining, length), token).ConfigureAwait(false);
             else
                 readLength = 0;
-            ProcessBuffer(onRead);
-            if (offset == 0)
+            bool actualEOF = readLength == 0;
+            ProcessBuffer(onRead, actualEOF);
+            if (done || offset > 0)
+                break;
+            if (bufferSize < 1024 * 1024 * 1024) // Max 1GB buffer to prevent excessive memory usage
             {
-                if (!done && bufferSize < 1024 * 1024 * 1024) // Max 1GB buffer to prevent excessive memory usage
-                {
-                    GrowBuffer();
-                    continue;
-                }
-                throw new Exception("Failure to parse JSON token buffer is too small");
+                GrowBuffer();
+                continue;
             }
-            break;
+            throw new Exception("Failure to parse JSON token buffer is too small");
         }
     }
 
