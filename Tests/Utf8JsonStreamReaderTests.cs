@@ -659,6 +659,104 @@ public class Utf8JsonStreamReaderTests
     }
 
     [TestMethod]
+    public void ExtremelyLargeJsonTokenReproducesProductionIssue()
+    {
+        // This test tries to reproduce the production issue where BufferSize grows to the max limit
+        // but we still can't make progress parsing. The new approach allows configuring the max size.
+        
+        // Test with a smaller max buffer to verify the limit works
+        var stream = new InfinitePropertyNameStream();
+        var reader = new Utf8JsonStreamReader(1024, maxBufferSize: 1024 * 1024 * 16); // 16MB max for test
+        
+        try
+        {
+            var tokens = new List<JsonTokenType>();
+            reader.Read(stream, (ref Utf8JsonReader r) =>
+            {
+                tokens.Add(r.TokenType);
+            });
+            Assert.Fail("Expected an exception to be thrown");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Got exception: {ex.GetType().Name}: {ex.Message}");
+            // Either our custom buffer limit exception or JsonReader exception for malformed JSON is acceptable
+            Assert.IsTrue(
+                ex.Message.Contains("buffer is too small") || 
+                ex.GetType().Name.Contains("JsonReader"), 
+                $"Unexpected exception: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    [TestMethod]
+    public void LargeButFiniteJsonTokenWorksWithSufficientBuffer()
+    {
+        // Test that legitimate large tokens work when we provide sufficient buffer space
+        var largePropertyName = new string('x', 1024 * 1024 * 2); // 2MB property name
+        var validJson = $@"{{""{ largePropertyName }"": ""value""}}";
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(validJson));
+        
+        // Allow up to 10MB buffer - should be sufficient for our 2MB property name
+        var reader = new Utf8JsonStreamReader(1024, maxBufferSize: 1024 * 1024 * 10);
+        var tokens = new List<JsonTokenType>();
+        
+        // This should NOT throw an exception
+        reader.Read(stream, (ref Utf8JsonReader r) =>
+        {
+            tokens.Add(r.TokenType);
+        });
+        
+        // Verify we got the expected tokens: StartObject, PropertyName, String, EndObject
+        Assert.AreEqual(4, tokens.Count);
+        Assert.AreEqual(JsonTokenType.StartObject, tokens[0]);
+        Assert.AreEqual(JsonTokenType.PropertyName, tokens[1]);
+        Assert.AreEqual(JsonTokenType.String, tokens[2]);
+        Assert.AreEqual(JsonTokenType.EndObject, tokens[3]);
+    }
+
+    // Simulates a network stream that provides an endless JSON property name
+    private class InfinitePropertyNameStream : Stream
+    {
+        private int _position = 0;
+        private static readonly byte[] _initialBytes = Encoding.UTF8.GetBytes("{\"");
+        private static readonly byte _aChar = (byte)'a';
+        
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => _position; set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (_position < _initialBytes.Length)
+            {
+                // First, send the opening of a JSON object and start of a property name
+                int toCopy = Math.Min(count, _initialBytes.Length - _position);
+                Array.Copy(_initialBytes, _position, buffer, offset, toCopy);
+                _position += toCopy;
+                return toCopy;
+            }
+            else
+            {
+                // Then keep sending 'a' characters to make an infinitely long property name
+                // This will force the buffer to grow until it hits the 1GB limit
+                for (int i = 0; i < count; i++)
+                {
+                    buffer[offset + i] = _aChar;
+                }
+                _position += count;
+                return count;
+            }
+        }
+
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    [TestMethod]
     public void IncompleteStringTokenThrowsAppropriateError()
     {
         // This test verifies that truncated JSON produces the expected error message

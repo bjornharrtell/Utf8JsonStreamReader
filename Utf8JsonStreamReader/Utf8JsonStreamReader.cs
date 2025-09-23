@@ -8,6 +8,7 @@ public sealed partial class Utf8JsonStreamReader
     bool done = false;
     byte[] buffer;
     int bufferSize;
+    readonly int maxBufferSize;
     int bufferLength = 0;
     int offset = 0;
     int remaining = 0;
@@ -16,9 +17,10 @@ public sealed partial class Utf8JsonStreamReader
 
     public delegate void OnRead(ref Utf8JsonReader reader);
 
-    public Utf8JsonStreamReader(int bufferSize = -1)
+    public Utf8JsonStreamReader(int bufferSize = 1024 * 32, int maxBufferSize = 1024 * 1024 * 1024)
     {
-        this.bufferSize = bufferSize <= 0 ? 1024 * 32 : bufferSize;
+        this.bufferSize = bufferSize;
+        this.maxBufferSize = maxBufferSize;
         buffer = new byte[this.bufferSize];
     }
 
@@ -47,11 +49,15 @@ public sealed partial class Utf8JsonStreamReader
         ReadAsync(stream, onRead, CancellationToken.None).AsTask().GetAwaiter().GetResult();
     }
 
-    void ProcessBuffer(OnRead onRead, bool actualEOF)
+    void ProcessBuffer(OnRead onRead, bool actualEOF, bool willGrowIfNeeded)
     {
         bufferLength = readLength + remaining;
         offset = 0;
-        done = actualEOF;
+        
+        // Only set done = true if we're at EOF AND we won't be growing the buffer
+        // This prevents JsonReader from trying to parse incomplete tokens
+        done = actualEOF && !willGrowIfNeeded;
+        
         var reader = new Utf8JsonReader(buffer.AsSpan(0, bufferLength), done, jsonReaderState);
         while (reader.Read())
             onRead(ref reader);
@@ -69,15 +75,20 @@ public sealed partial class Utf8JsonStreamReader
             else
                 readLength = 0;
             bool actualEOF = readLength == 0;
-            ProcessBuffer(onRead, actualEOF);
-            if (done || offset > 0)
+            bool canGrow = bufferSize < maxBufferSize;
+            bool willGrowIfNeeded = actualEOF && canGrow;
+            ProcessBuffer(onRead, actualEOF, willGrowIfNeeded);
+            if (offset > 0 || done)
                 break;
-            if (bufferSize < 1024 * 1024 * 1024) // Max 1GB buffer to prevent excessive memory usage
+            if (actualEOF)
             {
-                GrowBuffer();
-                continue;
+                if (canGrow)
+                {
+                    GrowBuffer();
+                    continue;
+                }
+                throw new Exception($"Failure to parse JSON token buffer is too small ({bufferSize})");
             }
-            throw new Exception("Failure to parse JSON token buffer is too small");
         }
     }
 
