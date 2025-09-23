@@ -6,7 +6,7 @@ namespace Wololo.Text.Json;
 public sealed partial class Utf8JsonStreamReader
 {
     bool done = false;
-    byte[] buffer;
+    Memory<byte> buffer;
     int bufferSize;
     readonly int maxBufferSize;
     int bufferLength = 0;
@@ -24,78 +24,56 @@ public sealed partial class Utf8JsonStreamReader
         buffer = new byte[this.bufferSize];
     }
 
-    int CopyRemaining()
+    void CopyRemaining()
     {
         remaining = bufferLength - offset;
         if (remaining > 0)
-            Array.Copy(buffer, offset, buffer, 0, remaining);
-        return bufferSize - remaining;
+            buffer[offset..].CopyTo(buffer);
     }
 
-    void GrowBuffer()
+    bool TryGrowBuffer()
     {
-        int newBufferSize = bufferSize * 2;
-        byte[] newBuffer = new byte[newBufferSize];
-        
-        if (bufferLength > 0)
-            Array.Copy(buffer, 0, newBuffer, 0, bufferLength);
-        
+        var newBufferSize = bufferSize * 2;
+        if (newBufferSize > maxBufferSize)
+        {
+            if (bufferSize < maxBufferSize)
+                newBufferSize = maxBufferSize;
+            else
+                return false;
+        }
+        var newBuffer = new byte[newBufferSize];
+        buffer[..bufferLength].CopyTo(newBuffer);
         buffer = newBuffer;
         bufferSize = newBufferSize;
+        return true;
+    }
+
+    void ReadStream(Stream stream, OnRead onRead)
+    {
+        CopyRemaining();
+        readLength = stream.ReadAtLeast(buffer[remaining..].Span, bufferSize - remaining, false);
+        if (!ReadBuffer(onRead))
+            ReadStream(stream, onRead);
     }
 
     public void Read(Stream stream, OnRead onRead)
     {
-        ReadAsync(stream, onRead, CancellationToken.None).AsTask().GetAwaiter().GetResult();
-    }
-
-    void ProcessBuffer(OnRead onRead, bool actualEOF, bool willGrowIfNeeded)
-    {
-        bufferLength = readLength + remaining;
-        offset = 0;
-        
-        // Only set done = true if we're at EOF AND we won't be growing the buffer
-        // This prevents JsonReader from trying to parse incomplete tokens
-        done = actualEOF && !willGrowIfNeeded;
-        
-        var reader = new Utf8JsonReader(buffer.AsSpan(0, bufferLength), done, jsonReaderState);
-        while (reader.Read())
-            onRead(ref reader);
-        jsonReaderState = reader.CurrentState;
-        offset = (int)reader.BytesConsumed;
+        while (!done)
+            ReadStream(stream, onRead);
     }
 
     async ValueTask ReadStreamAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
-        while (true)
-        {
-            var length = CopyRemaining();
-            if (length > 0)
-                readLength = await stream.ReadAsync(new Memory<byte>(buffer, remaining, length), token).ConfigureAwait(false);
-            else
-                readLength = 0;
-            bool actualEOF = readLength == 0;
-            bool canGrow = bufferSize < maxBufferSize;
-            bool willGrowIfNeeded = actualEOF && canGrow;
-            ProcessBuffer(onRead, actualEOF, willGrowIfNeeded);
-            if (offset > 0 || done)
-                break;
-            if (actualEOF)
-            {
-                if (canGrow)
-                {
-                    GrowBuffer();
-                    continue;
-                }
-                throw new Exception($"Failure to parse JSON token buffer is too small ({bufferSize})");
-            }
-        }
+        CopyRemaining();
+        readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
+        if (!ReadBuffer(onRead))
+            await ReadStreamAsync(stream, onRead, token);
     }
 
     public async ValueTask ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
         while (!done)
-            await ReadStreamAsync(stream, onRead, token).ConfigureAwait(false);
+            await ReadStreamAsync(stream, onRead, token);
     }
 
     static void AccumulateResults(ref Utf8JsonReader reader, List<JsonResult> results) =>
@@ -103,10 +81,10 @@ public sealed partial class Utf8JsonStreamReader
 
     public IEnumerable<JsonResult> ToEnumerable(Stream stream)
     {
-        var results = new List<JsonResult>(64);
+        var results = new List<JsonResult>();
         while (!done)
         {
-            ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+            ReadStream(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results));
             foreach (var item in results)
                 yield return item;
             results.Clear();
@@ -118,12 +96,34 @@ public sealed partial class Utf8JsonStreamReader
         var results = new List<JsonResult>();
         while (!done)
         {
-            await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), token).ConfigureAwait(false);
+            await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), token);
             foreach (var item in results)
                 yield return item;
             results.Clear();
             if (token.IsCancellationRequested)
                 break;
         }
+    }
+
+    private bool ReadBuffer(OnRead onRead)
+    {
+        bufferLength = readLength + remaining;
+        offset = 0;
+        done = bufferLength < bufferSize;
+        var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
+        while (reader.Read())
+            onRead(ref reader);
+        jsonReaderState = reader.CurrentState;
+        offset = (int)reader.BytesConsumed;
+        if (offset == 0 && !done)
+        {
+            if (TryGrowBuffer())
+                return false;
+            else
+                throw new Exception("Failure to parse JSON token buffer is too small");
+        }
+        if (offset == 0 && done)
+            throw new Exception("Failure to parse JSON token buffer is too small");
+        return true;
     }
 }
