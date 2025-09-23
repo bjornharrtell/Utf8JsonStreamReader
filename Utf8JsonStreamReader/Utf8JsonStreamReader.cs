@@ -8,6 +8,7 @@ public sealed partial class Utf8JsonStreamReader
     bool done = false;
     byte[] buffer;
     int bufferSize;
+    readonly int maxBufferSize;
     int bufferLength = 0;
     int offset = 0;
     int remaining = 0;
@@ -16,9 +17,10 @@ public sealed partial class Utf8JsonStreamReader
 
     public delegate void OnRead(ref Utf8JsonReader reader);
 
-    public Utf8JsonStreamReader(int bufferSize = -1)
+    public Utf8JsonStreamReader(int bufferSize = -1, int maxBufferSize = 1024 * 1024 * 1024)
     {
         this.bufferSize = bufferSize <= 0 ? 1024 * 32 : bufferSize;
+        this.maxBufferSize = maxBufferSize;
         buffer = new byte[this.bufferSize];
     }
 
@@ -72,12 +74,12 @@ public sealed partial class Utf8JsonStreamReader
             ProcessBuffer(onRead, actualEOF);
             if (done || offset > 0)
                 break;
-            if (bufferSize < 1024 * 1024 * 1024) // Max 1GB buffer to prevent excessive memory usage
+            if (bufferSize < maxBufferSize)
             {
                 GrowBuffer();
                 continue;
             }
-            throw new Exception("Failure to parse JSON token buffer is too small");
+            throw new Exception($"Failure to parse JSON token buffer is too small ({bufferSize})");
         }
     }
 
