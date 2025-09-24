@@ -15,9 +15,12 @@ public sealed partial class Utf8JsonStreamReader
     int readLength = 0;
     JsonReaderState jsonReaderState = new();
 
+    const int DefaultBufferSize = 1024 * 32;
+    const int DefaultMaxBufferSize = 1024 * 1024 * 1024;
+
     public delegate void OnRead(ref Utf8JsonReader reader);
 
-    public Utf8JsonStreamReader(int bufferSize = 1024 * 32, int maxBufferSize = 1024 * 1024 * 1024)
+    public Utf8JsonStreamReader(int bufferSize = DefaultBufferSize, int maxBufferSize = DefaultMaxBufferSize)
     {
         this.bufferSize = bufferSize;
         this.maxBufferSize = maxBufferSize;
@@ -28,7 +31,7 @@ public sealed partial class Utf8JsonStreamReader
     {
         remaining = bufferLength - offset;
         if (remaining > 0)
-            buffer[offset..].CopyTo(buffer);
+            buffer.Span[offset..bufferLength].CopyTo(buffer.Span[0..remaining]);
     }
 
     bool TryGrowBuffer()
