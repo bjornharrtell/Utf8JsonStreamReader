@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -15,11 +14,9 @@ public sealed partial class Utf8JsonStreamReader
     int remaining = 0;
     int readLength = 0;
     JsonReaderState jsonReaderState = new();
-    readonly ArrayPool<JsonResult> resultsPool = ArrayPool<JsonResult>.Shared;
 
     const int DefaultBufferSize = 1024 * 32;
     const int DefaultMaxBufferSize = 1024 * 1024 * 1024;
-    const int DefaultInitialCapacity = 1024;
 
     public delegate void OnRead(ref Utf8JsonReader reader);
 
@@ -82,49 +79,32 @@ public sealed partial class Utf8JsonStreamReader
             await ReadStreamAsync(stream, onRead, token);
     }
 
-    static void AccumulateResults(ref Utf8JsonReader reader, JsonResult[] results, ref int count)
-    {
-        if (count < results.Length)
-            results[count++] = new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader));
-    }
+    static void AccumulateResults(ref Utf8JsonReader reader, List<JsonResult> results) =>
+        results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)));
 
     public IEnumerable<JsonResult> ToEnumerable(Stream stream)
     {
-        var results = resultsPool.Rent(DefaultInitialCapacity);
-        try
+        var results = new List<JsonResult>();
+        while (!done)
         {
-            while (!done)
-            {
-                var count = 0;
-                ReadStream(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results, ref count));
-                for (int i = 0; i < count; i++)
-                    yield return results[i];
-            }
-        }
-        finally
-        {
-            resultsPool.Return(results);
+            ReadStream(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results));
+            foreach (var item in results)
+                yield return item;
+            results.Clear();
         }
     }
 
     public async IAsyncEnumerable<JsonResult> ToAsyncEnumerable(Stream stream, [EnumeratorCancellation] CancellationToken token = default)
     {
-        var results = resultsPool.Rent(DefaultInitialCapacity);
-        try
+        var results = new List<JsonResult>();
+        while (!done)
         {
-            while (!done)
-            {
-                var count = 0;
-                await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results, ref count), token);
-                for (int i = 0; i < count; i++)
-                    yield return results[i];
-                if (token.IsCancellationRequested)
-                    break;
-            }
-        }
-        finally
-        {
-            resultsPool.Return(results);
+            await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), token);
+            foreach (var item in results)
+                yield return item;
+            results.Clear();
+            if (token.IsCancellationRequested)
+                break;
         }
     }
 
