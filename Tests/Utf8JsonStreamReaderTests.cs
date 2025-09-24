@@ -812,4 +812,488 @@ public class Utf8JsonStreamReaderTests
                          $"Expected 'Expected end of string' and 'reached end of data' in error message, but got: {ex.Message}");
         }
     }
+
+    [TestMethod]
+    public void ToEnumerableArrayOverflowTest()
+    {
+        // Create a large JSON object that will generate more than 1024 tokens
+        // This will test the regression where results are silently dropped when the internal array is full
+        var properties = new Dictionary<string, object>();
+        
+        // Each property generates 2 tokens: PropertyName + String value
+        // To exceed 1024 tokens: StartObject (1) + properties*2 + EndObject (1) > 1024
+        // So we need: properties*2 > 1022, which means properties > 511
+        // Let's use 600 properties to be well above the threshold
+        for (int i = 0; i < 600; i++)
+        {
+            properties[$"property_{i:D3}"] = $"value_{i:D3}";
+        }
+        
+        var json = JsonSerializer.Serialize(properties, jsonSerializerOptions);
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader();
+        
+        var results = reader.ToEnumerable(stream).ToList();
+        
+        // Expected tokens: StartObject (1) + (PropertyName + String) * 600 + EndObject (1) = 1 + 1200 + 1 = 1202 tokens
+        int expectedTokenCount = 1 + (600 * 2) + 1;
+        Assert.AreEqual(expectedTokenCount, results.Count, "Some results were lost due to array overflow");
+        
+        // Verify structure
+        Assert.AreEqual(JsonTokenType.StartObject, results[0].TokenType);
+        Assert.AreEqual(JsonTokenType.EndObject, results[^1].TokenType);
+        
+        // Verify we have all properties
+        var propertyNames = new HashSet<string>();
+        for (int i = 1; i < results.Count - 1; i += 2)
+        {
+            Assert.AreEqual(JsonTokenType.PropertyName, results[i].TokenType);
+            Assert.AreEqual(JsonTokenType.String, results[i + 1].TokenType);
+            propertyNames.Add(results[i].Value?.ToString() ?? "");
+        }
+        
+        Assert.AreEqual(600, propertyNames.Count, "Some properties were lost");
+        for (int i = 0; i < 600; i++)
+        {
+            Assert.IsTrue(propertyNames.Contains($"property_{i:D3}"), $"Missing property_{i:D3}");
+        }
+    }
+
+    [TestMethod]
+    public async Task ToAsyncEnumerableArrayOverflowTest()
+    {
+        // Same test for async enumerable
+        var properties = new Dictionary<string, object>();
+        for (int i = 0; i < 600; i++)
+        {
+            properties[$"async_property_{i:D3}"] = $"async_value_{i:D3}";
+        }
+        
+        var json = JsonSerializer.Serialize(properties, jsonSerializerOptions);
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader();
+        
+        var results = new List<JsonResult>();
+        await foreach (var result in reader.ToAsyncEnumerable(stream))
+        {
+            results.Add(result);
+        }
+        
+        int expectedTokenCount = 1 + (600 * 2) + 1;
+        Assert.AreEqual(expectedTokenCount, results.Count, "Some results were lost due to array overflow");
+        
+        Assert.AreEqual(JsonTokenType.StartObject, results[0].TokenType);
+        Assert.AreEqual(JsonTokenType.EndObject, results[^1].TokenType);
+        
+        var propertyNames = new HashSet<string>();
+        for (int i = 1; i < results.Count - 1; i += 2)
+        {
+            Assert.AreEqual(JsonTokenType.PropertyName, results[i].TokenType);
+            Assert.AreEqual(JsonTokenType.String, results[i + 1].TokenType);
+            propertyNames.Add(results[i].Value?.ToString() ?? "");
+        }
+        
+        Assert.AreEqual(600, propertyNames.Count, "Some properties were lost");
+        for (int i = 0; i < 600; i++)
+        {
+            Assert.IsTrue(propertyNames.Contains($"async_property_{i:D3}"), $"Missing async_property_{i:D3}");
+        }
+    }
+
+    [TestMethod]
+    public void ToEnumerableDuplicateResultsTest()
+    {
+        // Test for potential duplicate results due to array pool reuse
+        // This tests the scenario where a pooled array might contain stale data
+        var json1 = @"{""first"": ""value1"", ""second"": ""value2""}";
+        var json2 = @"{""third"": ""value3""}";
+        
+        var stream1 = new MemoryStream(Encoding.UTF8.GetBytes(json1));
+        var reader1 = new Utf8JsonStreamReader();
+        var results1 = reader1.ToEnumerable(stream1).ToList();
+        
+        // Force array pool to potentially reuse the array
+        var stream2 = new MemoryStream(Encoding.UTF8.GetBytes(json2));
+        var reader2 = new Utf8JsonStreamReader();
+        var results2 = reader2.ToEnumerable(stream2).ToList();
+        
+        // Verify first result set
+        Assert.AreEqual(6, results1.Count); // StartObject, PropertyName, String, PropertyName, String, EndObject
+        Assert.AreEqual(JsonTokenType.StartObject, results1[0].TokenType);
+        Assert.AreEqual("first", results1[1].Value);
+        Assert.AreEqual("value1", results1[2].Value);
+        Assert.AreEqual("second", results1[3].Value);
+        Assert.AreEqual("value2", results1[4].Value);
+        Assert.AreEqual(JsonTokenType.EndObject, results1[5].TokenType);
+        
+        // Verify second result set doesn't contain any stale data from first
+        Assert.AreEqual(4, results2.Count); // StartObject, PropertyName, String, EndObject
+        Assert.AreEqual(JsonTokenType.StartObject, results2[0].TokenType);
+        Assert.AreEqual("third", results2[1].Value);
+        Assert.AreEqual("value3", results2[2].Value);
+        Assert.AreEqual(JsonTokenType.EndObject, results2[3].TokenType);
+        
+        // Ensure no values from first JSON appear in second result
+        var values2 = results2.Where(r => r.Value != null).Select(r => r.Value!.ToString()).ToList();
+        Assert.IsFalse(values2.Contains("first"), "Found stale 'first' property in second result");
+        Assert.IsFalse(values2.Contains("value1"), "Found stale 'value1' in second result");
+        Assert.IsFalse(values2.Contains("second"), "Found stale 'second' property in second result");
+        Assert.IsFalse(values2.Contains("value2"), "Found stale 'value2' in second result");
+    }
+
+    [TestMethod]
+    public async Task ToAsyncEnumerableDuplicateResultsTest()
+    {
+        // Same test for async enumerable
+        var json1 = @"{""async_first"": ""async_value1"", ""async_second"": ""async_value2""}";
+        var json2 = @"{""async_third"": ""async_value3""}";
+        
+        var stream1 = new MemoryStream(Encoding.UTF8.GetBytes(json1));
+        var reader1 = new Utf8JsonStreamReader();
+        var results1 = new List<JsonResult>();
+        await foreach (var result in reader1.ToAsyncEnumerable(stream1))
+        {
+            results1.Add(result);
+        }
+        
+        // Force array pool to potentially reuse the array
+        var stream2 = new MemoryStream(Encoding.UTF8.GetBytes(json2));
+        var reader2 = new Utf8JsonStreamReader();
+        var results2 = new List<JsonResult>();
+        await foreach (var result in reader2.ToAsyncEnumerable(stream2))
+        {
+            results2.Add(result);
+        }
+        
+        // Verify first result set
+        Assert.AreEqual(6, results1.Count);
+        Assert.AreEqual(JsonTokenType.StartObject, results1[0].TokenType);
+        Assert.AreEqual("async_first", results1[1].Value);
+        Assert.AreEqual("async_value1", results1[2].Value);
+        Assert.AreEqual("async_second", results1[3].Value);
+        Assert.AreEqual("async_value2", results1[4].Value);
+        Assert.AreEqual(JsonTokenType.EndObject, results1[5].TokenType);
+        
+        // Verify second result set doesn't contain any stale data from first
+        Assert.AreEqual(4, results2.Count);
+        Assert.AreEqual(JsonTokenType.StartObject, results2[0].TokenType);
+        Assert.AreEqual("async_third", results2[1].Value);
+        Assert.AreEqual("async_value3", results2[2].Value);
+        Assert.AreEqual(JsonTokenType.EndObject, results2[3].TokenType);
+        
+        // Ensure no values from first JSON appear in second result
+        var values2 = results2.Where(r => r.Value != null).Select(r => r.Value!.ToString()).ToList();
+        Assert.IsFalse(values2.Contains("async_first"), "Found stale 'async_first' property in second result");
+        Assert.IsFalse(values2.Contains("async_value1"), "Found stale 'async_value1' in second result");
+        Assert.IsFalse(values2.Contains("async_second"), "Found stale 'async_second' property in second result");
+        Assert.IsFalse(values2.Contains("async_value2"), "Found stale 'async_value2' in second result");
+    }
+
+    [TestMethod]
+    public void ToEnumerableMultipleIterationsConsistencyTest()
+    {
+        // Test that multiple iterations over the same stream produce consistent results
+        // This can catch issues where internal state is not properly reset
+        var json = @"{""prop1"": ""val1"", ""prop2"": ""val2"", ""prop3"": ""val3""}";
+        var originalBytes = Encoding.UTF8.GetBytes(json);
+        
+        List<JsonResult> firstResults;
+        List<JsonResult> secondResults;
+        List<JsonResult> thirdResults;
+        
+        // First iteration
+        var stream1 = new MemoryStream(originalBytes);
+        var reader1 = new Utf8JsonStreamReader();
+        firstResults = reader1.ToEnumerable(stream1).ToList();
+        
+        // Second iteration
+        var stream2 = new MemoryStream(originalBytes);
+        var reader2 = new Utf8JsonStreamReader();
+        secondResults = reader2.ToEnumerable(stream2).ToList();
+        
+        // Third iteration
+        var stream3 = new MemoryStream(originalBytes);
+        var reader3 = new Utf8JsonStreamReader();
+        thirdResults = reader3.ToEnumerable(stream3).ToList();
+        
+        // All results should be identical
+        Assert.AreEqual(firstResults.Count, secondResults.Count, "First and second iteration have different counts");
+        Assert.AreEqual(firstResults.Count, thirdResults.Count, "First and third iteration have different counts");
+        
+        for (int i = 0; i < firstResults.Count; i++)
+        {
+            Assert.AreEqual(firstResults[i].TokenType, secondResults[i].TokenType, $"Token type mismatch at index {i} between first and second iteration");
+            Assert.AreEqual(firstResults[i].Value, secondResults[i].Value, $"Value mismatch at index {i} between first and second iteration");
+            
+            Assert.AreEqual(firstResults[i].TokenType, thirdResults[i].TokenType, $"Token type mismatch at index {i} between first and third iteration");
+            Assert.AreEqual(firstResults[i].Value, thirdResults[i].Value, $"Value mismatch at index {i} between first and third iteration");
+        }
+    }
+
+    [TestMethod]
+    public void ToEnumerableAggressiveDuplicateDetectionTest()
+    {
+        // This test specifically targets duplicate token issues by:
+        // 1. Using small buffer size to force multiple ReadStream calls
+        // 2. Processing the same JSON multiple times
+        // 3. Carefully checking for exact token counts and sequences
+        var json = @"{""test"": ""value1"", ""nested"": {""inner"": ""value2""}, ""array"": [1, 2, 3]}";
+        var expectedTokenCount = 15; // Manually verified: StartObject, PropName, String, PropName, StartObject, PropName, String, EndObject, PropName, StartArray, Number, Number, Number, EndArray, EndObject
+        
+        // Test with very small buffer to force many ReadStream iterations
+        for (int bufferSize = 8; bufferSize <= 64; bufferSize *= 2)
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader(bufferSize);
+            var results = reader.ToEnumerable(stream).ToList();
+            
+            Assert.AreEqual(expectedTokenCount, results.Count, $"Wrong token count with buffer size {bufferSize}");
+            
+            // Verify exact sequence
+            Assert.AreEqual(JsonTokenType.StartObject, results[0].TokenType);
+            Assert.AreEqual("test", results[1].Value);
+            Assert.AreEqual("value1", results[2].Value);
+            Assert.AreEqual("nested", results[3].Value);
+            Assert.AreEqual(JsonTokenType.StartObject, results[4].TokenType);
+            Assert.AreEqual("inner", results[5].Value);
+            Assert.AreEqual("value2", results[6].Value);
+            Assert.AreEqual(JsonTokenType.EndObject, results[7].TokenType);
+            Assert.AreEqual("array", results[8].Value);
+            Assert.AreEqual(JsonTokenType.StartArray, results[9].TokenType);
+            Assert.AreEqual(1, Convert.ToInt32(results[10].Value));
+            Assert.AreEqual(2, Convert.ToInt32(results[11].Value));
+            Assert.AreEqual(3, Convert.ToInt32(results[12].Value));
+            Assert.AreEqual(JsonTokenType.EndArray, results[13].TokenType);
+            Assert.AreEqual(JsonTokenType.EndObject, results[14].TokenType);
+        }
+    }
+
+    [TestMethod]
+    public async Task ToAsyncEnumerableAggressiveDuplicateDetectionTest()
+    {
+        // Same test for async version
+        var json = @"{""test"": ""value1"", ""nested"": {""inner"": ""value2""}, ""array"": [1, 2, 3]}";
+        var expectedTokenCount = 15; // Manually verified
+        
+        for (int bufferSize = 8; bufferSize <= 64; bufferSize *= 2)
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader(bufferSize);
+            var results = new List<JsonResult>();
+            
+            await foreach (var result in reader.ToAsyncEnumerable(stream))
+            {
+                results.Add(result);
+            }
+            
+            Assert.AreEqual(expectedTokenCount, results.Count, $"Wrong token count with buffer size {bufferSize} in async version");
+            
+            // Verify exact sequence matches sync version
+            Assert.AreEqual(JsonTokenType.StartObject, results[0].TokenType);
+            Assert.AreEqual("test", results[1].Value);
+            Assert.AreEqual("value1", results[2].Value);
+        }
+    }
+
+    [TestMethod]
+    public void ToEnumerableSequentialProcessingNoDuplicatesTest()
+    {
+        // Test processing multiple different JSONs sequentially to catch cross-contamination
+        var jsons = new[]
+        {
+            @"{""first"": 1}",
+            @"{""second"": 2}",
+            @"{""third"": 3}",
+            @"[""array"", ""test""]",
+            @"""simple_string"""
+        };
+        
+        var expectedCounts = new[] { 4, 4, 4, 4, 1 }; // StartObj, PropName, Number, EndObj for first 3; StartArr, Str, Str, EndArr for 4th; String for 5th
+        
+        for (int i = 0; i < jsons.Length; i++)
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsons[i]));
+            var reader = new Utf8JsonStreamReader(16); // Small buffer
+            var results = reader.ToEnumerable(stream).ToList();
+            
+            Assert.AreEqual(expectedCounts[i], results.Count, $"Wrong count for JSON {i}: {jsons[i]}");
+            
+            // Check for unexpected values from other JSONs
+            var values = results.Where(r => r.Value != null).Select(r => r.Value!.ToString()).ToHashSet();
+            
+            if (i == 0)
+            {
+                Assert.IsTrue(values.Contains("first") && values.Contains("1"), "Missing expected values from first JSON");
+                Assert.IsFalse(values.Contains("second") || values.Contains("2"), "Found values from second JSON in first");
+            }
+            else if (i == 1)
+            {
+                Assert.IsTrue(values.Contains("second") && values.Contains("2"), "Missing expected values from second JSON");
+                Assert.IsFalse(values.Contains("first") || values.Contains("1") || values.Contains("third"), "Found values from other JSONs in second");
+            }
+            // ... and so on for other JSONs
+        }
+    }
+
+    [TestMethod]
+    public void ToEnumerableExactTokenCountWithLargeJsonTest()
+    {
+        // Create a large JSON where we can precisely count expected tokens
+        var properties = new Dictionary<string, object>();
+        for (int i = 0; i < 100; i++)
+        {
+            properties[$"prop_{i:D3}"] = $"value_{i:D3}";
+        }
+        
+        var json = JsonSerializer.Serialize(properties, jsonSerializerOptions);
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader(32); // Small buffer to force multiple reads
+        
+        var results = reader.ToEnumerable(stream).ToList();
+        var expectedCount = 1 + (100 * 2) + 1; // StartObj + (PropName + String) * 100 + EndObj = 201
+        
+        Assert.AreEqual(expectedCount, results.Count, "Token count doesn't match expected");
+        
+        // Verify no duplicate property names
+        var propertyNames = new List<string>();
+        for (int i = 1; i < results.Count - 1; i += 2)
+        {
+            Assert.AreEqual(JsonTokenType.PropertyName, results[i].TokenType, $"Expected PropertyName at index {i}");
+            propertyNames.Add(results[i].Value?.ToString() ?? "");
+        }
+        
+        Assert.AreEqual(100, propertyNames.Count, "Wrong number of property names");
+        Assert.AreEqual(100, propertyNames.Distinct().Count(), "Found duplicate property names - indicates token duplication!");
+    }
+
+    [TestMethod]
+    public void ToEnumerableChannelBoundaryDuplicateTest()
+    {
+        // This test is specifically designed to catch duplicates that might occur
+        // when the channel retains results across ReadStream calls
+        var json = @"{""a"":1,""b"":2,""c"":3}";
+        
+        // Process with extremely small buffer to force many ReadStream calls
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader(4); // Very small buffer
+        
+        var results = reader.ToEnumerable(stream).ToList();
+        var tokenSequence = results.Select(r => $"{r.TokenType}:{r.Value}").ToList();
+        
+        // Check for any duplicated tokens in the sequence
+        var duplicates = tokenSequence
+            .Select((token, index) => new { Token = token, Index = index })
+            .GroupBy(x => x.Token)
+            .Where(g => g.Count() > 1)
+            .ToList();
+        
+        if (duplicates.Any())
+        {
+            var duplicateInfo = string.Join(", ", duplicates.Select(d => $"{d.Key} appears at indices [{string.Join(",", d.Select(x => x.Index))}]"));
+            Assert.Fail($"Found duplicate tokens: {duplicateInfo}");
+        }
+        
+        // Verify expected sequence
+        Assert.AreEqual("StartObject:", tokenSequence[0]);
+        Assert.AreEqual("PropertyName:a", tokenSequence[1]);
+        Assert.AreEqual("Number:1", tokenSequence[2]);
+        Assert.AreEqual("PropertyName:b", tokenSequence[3]);
+        Assert.AreEqual("Number:2", tokenSequence[4]);
+        Assert.AreEqual("PropertyName:c", tokenSequence[5]);
+        Assert.AreEqual("Number:3", tokenSequence[6]);
+        Assert.AreEqual("EndObject:", tokenSequence[7]);
+        
+        Assert.AreEqual(8, results.Count, "Expected exactly 8 tokens");
+    }
+
+    [TestMethod] 
+    public void ToEnumerableMultipleReaderInstancesDuplicateTest()
+    {
+        // Test if using multiple reader instances in succession causes cross-contamination
+        var json1 = @"{""first"": ""value1""}";
+        var json2 = @"{""second"": ""value2""}";
+        
+        var allResults = new List<List<JsonResult>>();
+        
+        // Create multiple reader instances and process different JSON
+        for (int i = 0; i < 5; i++)
+        {
+            var stream1 = new MemoryStream(Encoding.UTF8.GetBytes(json1));
+            var reader1 = new Utf8JsonStreamReader(8);
+            var results1 = reader1.ToEnumerable(stream1).ToList();
+            allResults.Add(results1);
+            
+            var stream2 = new MemoryStream(Encoding.UTF8.GetBytes(json2));
+            var reader2 = new Utf8JsonStreamReader(8);
+            var results2 = reader2.ToEnumerable(stream2).ToList();
+            allResults.Add(results2);
+        }
+        
+        // Verify no cross-contamination between different JSON documents
+        for (int i = 0; i < allResults.Count; i += 2)
+        {
+            var firstResults = allResults[i];
+            var secondResults = allResults[i + 1];
+            
+            // First should only contain "first" and "value1"
+            var firstValues = firstResults.Where(r => r.Value != null).Select(r => r.Value!.ToString()).ToList();
+            Assert.IsTrue(firstValues.Contains("first"), $"Iteration {i/2}: Missing 'first' in first results");
+            Assert.IsTrue(firstValues.Contains("value1"), $"Iteration {i/2}: Missing 'value1' in first results");
+            Assert.IsFalse(firstValues.Contains("second"), $"Iteration {i/2}: Found 'second' in first results - indicates contamination!");
+            Assert.IsFalse(firstValues.Contains("value2"), $"Iteration {i/2}: Found 'value2' in first results - indicates contamination!");
+            
+            // Second should only contain "second" and "value2"
+            var secondValues = secondResults.Where(r => r.Value != null).Select(r => r.Value!.ToString()).ToList();
+            Assert.IsTrue(secondValues.Contains("second"), $"Iteration {i/2}: Missing 'second' in second results");
+            Assert.IsTrue(secondValues.Contains("value2"), $"Iteration {i/2}: Missing 'value2' in second results");
+            Assert.IsFalse(secondValues.Contains("first"), $"Iteration {i/2}: Found 'first' in second results - indicates contamination!");
+            Assert.IsFalse(secondValues.Contains("value1"), $"Iteration {i/2}: Found 'value1' in second results - indicates contamination!");
+        }
+    }
+
+    [TestMethod]
+    public void ToEnumerableMultipleReadersMultipleStreamsDuplicateTest()
+    {
+        // Test using separate reader instances for separate streams (correct usage pattern)
+        var jsons = new[]
+        {
+            @"{""doc1"": ""val1""}",
+            @"{""doc2"": ""val2""}",
+            @"{""doc3"": ""val3""}"
+        };
+        
+        var allResults = new List<List<JsonResult>>();
+        
+        // Use separate reader instance for each stream (correct pattern)
+        foreach (var json in jsons)
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            var reader = new Utf8JsonStreamReader(32); // New reader for each stream
+            var results = reader.ToEnumerable(stream).ToList();
+            allResults.Add(results);
+        }
+        
+        // Verify each result set is distinct and contains only its expected values
+        for (int i = 0; i < allResults.Count; i++)
+        {
+            var results = allResults[i];
+            var values = results.Where(r => r.Value != null).Select(r => r.Value!.ToString()).ToHashSet();
+            
+            // Should contain the expected values for this document
+            Assert.IsTrue(values.Contains($"doc{i+1}"), $"Missing expected property name doc{i+1}");
+            Assert.IsTrue(values.Contains($"val{i+1}"), $"Missing expected value val{i+1}");
+            
+            // Should NOT contain values from other documents
+            for (int j = 0; j < jsons.Length; j++)
+            {
+                if (i != j)
+                {
+                    Assert.IsFalse(values.Contains($"doc{j+1}"), $"Found doc{j+1} in results {i} - indicates duplicate/contamination!");
+                    Assert.IsFalse(values.Contains($"val{j+1}"), $"Found val{j+1} in results {i} - indicates duplicate/contamination!");
+                }
+            }
+            
+            Assert.AreEqual(4, results.Count, $"Expected 4 tokens for document {i+1}");
+        }
+    }
 }
