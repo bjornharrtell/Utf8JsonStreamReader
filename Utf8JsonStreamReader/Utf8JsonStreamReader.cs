@@ -34,7 +34,7 @@ public sealed partial class Utf8JsonStreamReader
     {
         remaining = bufferLength - offset;
         if (remaining > 0)
-            buffer.Span[offset..bufferLength].CopyTo(buffer.Span[0..remaining]);
+            buffer[offset..].CopyTo(buffer);
     }
 
     bool TryGrowBuffer()
