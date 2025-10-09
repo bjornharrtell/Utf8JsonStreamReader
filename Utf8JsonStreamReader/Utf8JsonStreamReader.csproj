@@ -8,6 +8,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/bjornharrtell/Utf8JsonStreamReader</RepositoryUrl>
     <Description>A streaming JSON parser based on System.Text.Json.Utf8JsonReader</Description>
+    <RootNamespace>Wololo.Text.Json</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

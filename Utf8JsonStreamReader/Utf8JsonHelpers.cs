@@ -20,15 +20,12 @@ public static class Utf8JsonHelpers
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static object? GetValue(ref Utf8JsonReader reader)
+    public static object? GetValue(ref Utf8JsonReader reader) => reader.TokenType switch
     {
-        return reader.TokenType switch
-        {
-            JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => reader.GetString(),
-            JsonTokenType.Number => GetNumber(ref reader),
-            JsonTokenType.True => true,
-            JsonTokenType.False => false,
-            _ => null,
-        };
-    }
+        JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => reader.GetString(),
+        JsonTokenType.Number => GetNumber(ref reader),
+        JsonTokenType.True => true,
+        JsonTokenType.False => false,
+        _ => null,
+    };
 }
