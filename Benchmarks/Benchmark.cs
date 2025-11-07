@@ -116,6 +116,17 @@ public class Program
                 _ = reader.Value;
             }
         }
+
+        [Benchmark]
+        public void TraverseNuGetJsonTextReader()
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+            using var reader = new NuGet.Shared.Utf8JsonStreamReader(stream);
+            while (reader.Read())
+            {
+                _ = reader.TokenType;
+            }
+        }
     }
 
     public static void Main(string[] args)
