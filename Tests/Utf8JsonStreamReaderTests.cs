@@ -8,10 +8,10 @@ namespace Tests;
 [TestClass]
 public class Utf8JsonStreamReaderTests
 {
-    readonly static JsonSerializerOptions jsonSerializerOptions = new()
+    static readonly JsonSerializerOptions jsonSerializerOptions = new()
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        WriteIndented = false
+        WriteIndented = false,
     };
 
     readonly string jsonBasic = JsonSerializer.Serialize(
@@ -23,20 +23,13 @@ public class Utf8JsonStreamReaderTests
             Status = false,
             Num = 13434934.23233434,
             NumD = 1.343493434534523233434,
-            Long = 9223372036854775807L
+            Long = 9223372036854775807L,
         },
         jsonSerializerOptions
     );
 
     readonly string jsonNested = JsonSerializer.Serialize(
-        new
-        {
-            Array = new object[] {
-                new {
-                    Id = 1
-                }
-            }
-        },
+        new { Array = new object[] { new { Id = 1 } } },
         jsonSerializerOptions
     );
 
@@ -66,42 +59,45 @@ public class Utf8JsonStreamReaderTests
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonBasic));
         var reader = new Utf8JsonStreamReader();
         int c = 0;
-        reader.Read(stream, (ref Utf8JsonReader reader) =>
-        {
-            if (c == 0)
-                Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
-            else if (c == 1)
-                AssertPropertyName("Id", ref reader);
-            else if (c == 2)
-                AssertInt16(2, ref reader);
-            else if (c == 3)
-                AssertPropertyName("NegativeId", ref reader);
-            else if (c == 4)
-                AssertInt16(-23, ref reader);
-            else if (c == 5)
-                AssertPropertyName("TimeStamp", ref reader);
-            else if (c == 6)
-                AssertString("2012-10-21T00:00:00+05:30", ref reader);
-            else if (c == 7)
-                AssertPropertyName("Status", ref reader);
-            else if (c == 8)
-                Assert.AreEqual(JsonTokenType.False, reader.TokenType);
-            else if (c == 9)
-                AssertPropertyName("Num", ref reader);
-            else if (c == 10)
-                Assert.AreEqual(13434934.23233434, reader.GetDouble());
-            else if (c == 11)
-                AssertPropertyName("NumD", ref reader);
-            else if (c == 12)
-                Assert.AreEqual(1.343493434534523233434, reader.GetDouble());
-            else if (c == 13)
-                AssertPropertyName("Long", ref reader);
-            else if (c == 14)
-                Assert.AreEqual(9223372036854775807L, reader.GetInt64());
-            else if (c == 15)
-                Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
-            c++;
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader reader) =>
+            {
+                if (c == 0)
+                    Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
+                else if (c == 1)
+                    AssertPropertyName("Id", ref reader);
+                else if (c == 2)
+                    AssertInt16(2, ref reader);
+                else if (c == 3)
+                    AssertPropertyName("NegativeId", ref reader);
+                else if (c == 4)
+                    AssertInt16(-23, ref reader);
+                else if (c == 5)
+                    AssertPropertyName("TimeStamp", ref reader);
+                else if (c == 6)
+                    AssertString("2012-10-21T00:00:00+05:30", ref reader);
+                else if (c == 7)
+                    AssertPropertyName("Status", ref reader);
+                else if (c == 8)
+                    Assert.AreEqual(JsonTokenType.False, reader.TokenType);
+                else if (c == 9)
+                    AssertPropertyName("Num", ref reader);
+                else if (c == 10)
+                    Assert.AreEqual(13434934.23233434, reader.GetDouble());
+                else if (c == 11)
+                    AssertPropertyName("NumD", ref reader);
+                else if (c == 12)
+                    Assert.AreEqual(1.343493434534523233434, reader.GetDouble());
+                else if (c == 13)
+                    AssertPropertyName("Long", ref reader);
+                else if (c == 14)
+                    Assert.AreEqual(9223372036854775807L, reader.GetInt64());
+                else if (c == 15)
+                    Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
+                c++;
+            }
+        );
     }
 
     [TestMethod]
@@ -110,28 +106,31 @@ public class Utf8JsonStreamReaderTests
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonNested));
         var reader = new Utf8JsonStreamReader();
         int c = 0;
-        reader.Read(stream, (ref Utf8JsonReader reader) =>
-        {
-            if (c == 0)
-                Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
-            else if (c == 1)
-                AssertPropertyName("Array", ref reader);
-            else if (c == 2)
-                Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
-            else if (c == 3)
-                Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
-            else if (c == 4)
-                AssertPropertyName("Id", ref reader);
-            else if (c == 5)
-                AssertInt16(1, ref reader);
-            else if (c == 6)
-                Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
-            else if (c == 7)
-                Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-            else if (c == 8)
-                Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
-            c++;
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader reader) =>
+            {
+                if (c == 0)
+                    Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
+                else if (c == 1)
+                    AssertPropertyName("Array", ref reader);
+                else if (c == 2)
+                    Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+                else if (c == 3)
+                    Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
+                else if (c == 4)
+                    AssertPropertyName("Id", ref reader);
+                else if (c == 5)
+                    AssertInt16(1, ref reader);
+                else if (c == 6)
+                    Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
+                else if (c == 7)
+                    Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+                else if (c == 8)
+                    Assert.AreEqual(JsonTokenType.EndObject, reader.TokenType);
+                c++;
+            }
+        );
     }
 
     [TestMethod]
@@ -140,16 +139,19 @@ public class Utf8JsonStreamReaderTests
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
         var reader = new Utf8JsonStreamReader();
         int c = 0;
-        reader.Read(stream, (ref Utf8JsonReader reader) =>
-        {
-            if (c == 0)
-                Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
-            else if (c == 1)
-                AssertString("0", ref reader);
-            else if (c == 2)
-                Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-            c++;
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader reader) =>
+            {
+                if (c == 0)
+                    Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+                else if (c == 1)
+                    AssertString("0", ref reader);
+                else if (c == 2)
+                    Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+                c++;
+            }
+        );
     }
 
     [TestMethod]
@@ -158,16 +160,19 @@ public class Utf8JsonStreamReaderTests
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
         var reader = new Utf8JsonStreamReader();
         int c = 0;
-        await reader.ReadAsync(stream, (ref Utf8JsonReader reader) =>
-        {
-            if (c == 0)
-                Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
-            else if (c == 1)
-                AssertString("0", ref reader);
-            else if (c == 2)
-                Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-            c++;
-        });
+        await reader.ReadAsync(
+            stream,
+            (ref Utf8JsonReader reader) =>
+            {
+                if (c == 0)
+                    Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+                else if (c == 1)
+                    AssertString("0", ref reader);
+                else if (c == 2)
+                    Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+                c++;
+            }
+        );
     }
 
     [TestMethod]
@@ -228,12 +233,15 @@ public class Utf8JsonStreamReaderTests
         var stream = new MemoryStream("0"u8.ToArray());
         var reader = new Utf8JsonStreamReader();
         int c = 0;
-        reader.Read(stream, (ref Utf8JsonReader reader) =>
-        {
-            if (c == 0)
-                AssertInt16(0, ref reader);
-            c++;
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader reader) =>
+            {
+                if (c == 0)
+                    AssertInt16(0, ref reader);
+                c++;
+            }
+        );
     }
 
     [TestMethod]
@@ -242,16 +250,19 @@ public class Utf8JsonStreamReaderTests
         var stream = new MemoryStream("[\r\n\"0\"\r\n]\r\n"u8.ToArray());
         var reader = new Utf8JsonStreamReader();
         int c = 0;
-        reader.Read(stream, (ref Utf8JsonReader reader) =>
-        {
-            if (c == 0)
-                Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
-            else if (c == 1)
-                AssertString("0", ref reader);
-            else if (c == 2)
-                Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
-            c++;
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader reader) =>
+            {
+                if (c == 0)
+                    Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
+                else if (c == 1)
+                    AssertString("0", ref reader);
+                else if (c == 2)
+                    Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
+                c++;
+            }
+        );
     }
 
     [TestMethod]
@@ -261,40 +272,43 @@ public class Utf8JsonStreamReaderTests
         var reader = new Utf8JsonStreamReader();
         int balO = 0;
         int balA = 0;
-        reader.Read(stream, (ref Utf8JsonReader reader) =>
-        {
-            switch (reader.TokenType)
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader reader) =>
             {
-                case JsonTokenType.StartObject:
-                    balO++;
-                    break;
-                case JsonTokenType.StartArray:
-                    balA++;
-                    break;
-                case JsonTokenType.EndObject:
-                    Assert.IsLessThan(balO, 0);
-                    balO--;
-                    break;
-                case JsonTokenType.PropertyName:
-                    _ = reader.GetString();
-                    break;
-                case JsonTokenType.EndArray:
-                    Assert.IsLessThan(balA, 0);
-                    balA--;
-                    break;
-                case JsonTokenType.Comment:
-                    break;
-                case JsonTokenType.String:
-                case JsonTokenType.Number:
-                case JsonTokenType.True:
-                case JsonTokenType.False:
-                case JsonTokenType.Null:
-                    _ = reader.GetString();
-                    break;
-                default:
-                    throw new($"Unexpected token in this state, expecting value, got {reader.TokenType}");
+                switch (reader.TokenType)
+                {
+                    case JsonTokenType.StartObject:
+                        balO++;
+                        break;
+                    case JsonTokenType.StartArray:
+                        balA++;
+                        break;
+                    case JsonTokenType.EndObject:
+                        Assert.IsLessThan(balO, 0);
+                        balO--;
+                        break;
+                    case JsonTokenType.PropertyName:
+                        _ = reader.GetString();
+                        break;
+                    case JsonTokenType.EndArray:
+                        Assert.IsLessThan(balA, 0);
+                        balA--;
+                        break;
+                    case JsonTokenType.Comment:
+                        break;
+                    case JsonTokenType.String:
+                    case JsonTokenType.Number:
+                    case JsonTokenType.True:
+                    case JsonTokenType.False:
+                    case JsonTokenType.Null:
+                        _ = reader.GetString();
+                        break;
+                    default:
+                        throw new($"Unexpected token in this state, expecting value, got {reader.TokenType}");
+                }
             }
-        });
+        );
         Assert.AreEqual(0, balA);
         Assert.AreEqual(0, balO);
     }
@@ -308,10 +322,13 @@ public class Utf8JsonStreamReaderTests
         var reader = new Utf8JsonStreamReader(5); // Very small buffer that will need to grow
 
         var tokens = new List<(JsonTokenType type, object? value)>();
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            tokens.Add((r.TokenType, Utf8JsonHelpers.GetValue(ref r)));
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                tokens.Add((r.TokenType, Utf8JsonHelpers.GetValue(ref r)));
+            }
+        );
 
         Assert.HasCount(4, tokens);
         Assert.AreEqual(JsonTokenType.StartObject, tokens[0].type);
@@ -331,10 +348,13 @@ public class Utf8JsonStreamReaderTests
         var reader = new Utf8JsonStreamReader(5); // Very small buffer that will need to grow
 
         var tokens = new List<(JsonTokenType type, object? value)>();
-        await reader.ReadAsync(stream, (ref Utf8JsonReader r) =>
-        {
-            tokens.Add((r.TokenType, Utf8JsonHelpers.GetValue(ref r)));
-        });
+        await reader.ReadAsync(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                tokens.Add((r.TokenType, Utf8JsonHelpers.GetValue(ref r)));
+            }
+        );
 
         Assert.HasCount(4, tokens);
         Assert.AreEqual(JsonTokenType.StartObject, tokens[0].type);
@@ -353,7 +373,8 @@ public class Utf8JsonStreamReaderTests
         var veryLargePropertyName = new string('y', 500); // 500 chars
         var extremelyLargePropertyName = new string('z', 1000); // 1000 chars
 
-        var json = $@"{{
+        var json =
+            $@"{{
             ""{largePropertyName}"": ""value1"",
             ""{veryLargePropertyName}"": ""value2"",
             ""{extremelyLargePropertyName}"": ""value3""
@@ -365,13 +386,16 @@ public class Utf8JsonStreamReaderTests
         var propertyNames = new List<string>();
         var values = new List<string>();
 
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            if (r.TokenType == JsonTokenType.PropertyName)
-                propertyNames.Add(r.GetString()!);
-            else if (r.TokenType == JsonTokenType.String)
-                values.Add(r.GetString()!);
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                if (r.TokenType == JsonTokenType.PropertyName)
+                    propertyNames.Add(r.GetString()!);
+                else if (r.TokenType == JsonTokenType.String)
+                    values.Add(r.GetString()!);
+            }
+        );
 
         Assert.HasCount(3, propertyNames);
         Assert.HasCount(3, values);
@@ -433,11 +457,14 @@ public class Utf8JsonStreamReaderTests
         var reader = new Utf8JsonStreamReader(100); // Small buffer relative to content
 
         string? capturedValue = null;
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            if (r.TokenType == JsonTokenType.String)
-                capturedValue = r.GetString();
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                if (r.TokenType == JsonTokenType.String)
+                    capturedValue = r.GetString();
+            }
+        );
 
         Assert.AreEqual(largeValue, capturedValue);
     }
@@ -445,7 +472,8 @@ public class Utf8JsonStreamReaderTests
     [TestMethod]
     public void ComplexNestedJsonWithSmallBuffer()
     {
-        var json = @"{
+        var json =
+            @"{
             ""very_long_property_name_level_1"": {
                 ""very_long_property_name_level_2"": {
                     ""very_long_property_name_level_3"": [
@@ -460,10 +488,13 @@ public class Utf8JsonStreamReaderTests
         var reader = new Utf8JsonStreamReader(15); // Small buffer
 
         var tokens = new List<JsonTokenType>();
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            tokens.Add(r.TokenType);
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                tokens.Add(r.TokenType);
+            }
+        );
 
         // Verify we got all expected tokens
         var expectedTokens = new[]
@@ -480,7 +511,7 @@ public class Utf8JsonStreamReaderTests
             JsonTokenType.EndArray,
             JsonTokenType.EndObject,
             JsonTokenType.EndObject,
-            JsonTokenType.EndObject
+            JsonTokenType.EndObject,
         };
 
         Assert.HasCount(expectedTokens.Length, tokens);
@@ -504,13 +535,16 @@ public class Utf8JsonStreamReaderTests
         string? capturedProperty = null;
         string? capturedValue = null;
 
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            if (r.TokenType == JsonTokenType.PropertyName)
-                capturedProperty = r.GetString();
-            else if (r.TokenType == JsonTokenType.String)
-                capturedValue = r.GetString();
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                if (r.TokenType == JsonTokenType.PropertyName)
+                    capturedProperty = r.GetString();
+                else if (r.TokenType == JsonTokenType.String)
+                    capturedValue = r.GetString();
+            }
+        );
 
         Assert.AreEqual(unicodeProperty, capturedProperty);
         Assert.AreEqual(unicodeValue, capturedValue);
@@ -534,10 +568,13 @@ public class Utf8JsonStreamReaderTests
 
         // This should work fine and not hit any limits
         var tokens = new List<JsonTokenType>();
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            tokens.Add(r.TokenType);
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                tokens.Add(r.TokenType);
+            }
+        );
 
         Assert.HasCount(4, tokens); // StartObject, PropertyName, String, EndObject
     }
@@ -548,32 +585,37 @@ public class Utf8JsonStreamReaderTests
         // This test simulates the real-world scenario: complete JSON but very small buffer
         // that requires multiple reads to get all the data
 
-        var largeJson = JsonSerializer.Serialize(new
-        {
-            description = "This is a very long description that will definitely exceed small buffer sizes and require multiple buffer reads to complete processing. It contains enough text to span several small buffers.",
-            data = new[]
+        var largeJson = JsonSerializer.Serialize(
+            new
             {
-                "item1 with some additional text to make it longer",
-                "item2 with some additional text to make it longer",
-                "item3 with some additional text to make it longer",
-                "item4 with some additional text to make it longer"
-            },
-            metadata = new
-            {
-                version = "1.0",
-                timestamp = "2023-01-01T00:00:00Z",
-                additional = "More data to make this JSON quite large for testing purposes"
+                description = "This is a very long description that will definitely exceed small buffer sizes and require multiple buffer reads to complete processing. It contains enough text to span several small buffers.",
+                data = new[]
+                {
+                    "item1 with some additional text to make it longer",
+                    "item2 with some additional text to make it longer",
+                    "item3 with some additional text to make it longer",
+                    "item4 with some additional text to make it longer",
+                },
+                metadata = new
+                {
+                    version = "1.0",
+                    timestamp = "2023-01-01T00:00:00Z",
+                    additional = "More data to make this JSON quite large for testing purposes",
+                },
             }
-        });
+        );
 
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(largeJson));
         var reader = new Utf8JsonStreamReader(50); // Very small buffer to force many reads
 
         var tokens = new List<JsonTokenType>();
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            tokens.Add(r.TokenType);
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                tokens.Add(r.TokenType);
+            }
+        );
 
         // Should successfully parse the complete JSON without any "end of data" errors
         Assert.IsGreaterThan(10, tokens.Count, "Should have parsed multiple tokens");
@@ -603,11 +645,17 @@ public class Utf8JsonStreamReaderTests
             set => throw new NotSupportedException();
         }
 
-        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override async Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken
+        )
         {
             // Simulate network behavior: sometimes read less than requested even when more data is available
             var remaining = (int)(_underlying.Length - _underlying.Position);
-            if (remaining == 0) return 0; // True EOF
+            if (remaining == 0)
+                return 0; // True EOF
 
             // Randomly read between 1 and the requested amount (but not more than available)
             var maxToRead = Math.Min(count, remaining);
@@ -617,14 +665,19 @@ public class Utf8JsonStreamReaderTests
         }
 
         public override void Flush() => _underlying.Flush();
+
         public override int Read(byte[] buffer, int offset, int count) => ReadAsync(buffer, offset, count).Result;
+
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
         public override void SetLength(long value) => throw new NotSupportedException();
+
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) _underlying?.Dispose();
+            if (disposing)
+                _underlying?.Dispose();
             base.Dispose(disposing);
         }
     }
@@ -636,20 +689,25 @@ public class Utf8JsonStreamReaderTests
         // than requested even when more data is available - this is the likely cause of the
         // "Expected end of string" error when using small buffers
 
-        var largeJson = JsonSerializer.Serialize(new
-        {
-            description = "This is a very long description that will definitely exceed small buffer sizes and require multiple buffer reads to complete processing.",
-            longString = "This is a very long string value that will span across multiple buffer reads and could potentially trigger the 'Expected end of string' error if the buffer management is incorrect."
-        });
+        var largeJson = JsonSerializer.Serialize(
+            new
+            {
+                description = "This is a very long description that will definitely exceed small buffer sizes and require multiple buffer reads to complete processing.",
+                longString = "This is a very long string value that will span across multiple buffer reads and could potentially trigger the 'Expected end of string' error if the buffer management is incorrect.",
+            }
+        );
 
         var stream = new SimulatedNetworkStream(Encoding.UTF8.GetBytes(largeJson));
         var reader = new Utf8JsonStreamReader(30); // Small buffer
 
         var tokens = new List<JsonTokenType>();
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            tokens.Add(r.TokenType);
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                tokens.Add(r.TokenType);
+            }
+        );
 
         // Should successfully parse the complete JSON without any "end of data" errors
         Assert.IsGreaterThan(5, tokens.Count, "Should have parsed multiple tokens");
@@ -670,10 +728,13 @@ public class Utf8JsonStreamReaderTests
         try
         {
             var tokens = new List<JsonTokenType>();
-            reader.Read(stream, (ref Utf8JsonReader r) =>
-            {
-                tokens.Add(r.TokenType);
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader r) =>
+                {
+                    tokens.Add(r.TokenType);
+                }
+            );
             Assert.Fail("Expected an exception to be thrown");
         }
         catch (Exception ex)
@@ -681,9 +742,9 @@ public class Utf8JsonStreamReaderTests
             Console.WriteLine($"Got exception: {ex.GetType().Name}: {ex.Message}");
             // Either our custom buffer limit exception or JsonReader exception for malformed JSON is acceptable
             Assert.IsTrue(
-                ex.Message.Contains("buffer is too small") ||
-                ex.GetType().Name.Contains("JsonReader"),
-                $"Unexpected exception: {ex.GetType().Name}: {ex.Message}");
+                ex.Message.Contains("buffer is too small") || ex.GetType().Name.Contains("JsonReader"),
+                $"Unexpected exception: {ex.GetType().Name}: {ex.Message}"
+            );
         }
     }
 
@@ -700,10 +761,13 @@ public class Utf8JsonStreamReaderTests
         var tokens = new List<JsonTokenType>();
 
         // This should NOT throw an exception
-        reader.Read(stream, (ref Utf8JsonReader r) =>
-        {
-            tokens.Add(r.TokenType);
-        });
+        reader.Read(
+            stream,
+            (ref Utf8JsonReader r) =>
+            {
+                tokens.Add(r.TokenType);
+            }
+        );
 
         // Verify we got the expected tokens: StartObject, PropertyName, String, EndObject
         Assert.HasCount(4, tokens);
@@ -724,7 +788,11 @@ public class Utf8JsonStreamReaderTests
         public override bool CanSeek => false;
         public override bool CanWrite => false;
         public override long Length => throw new NotSupportedException();
-        public override long Position { get => _position; set => throw new NotSupportedException(); }
+        public override long Position
+        {
+            get => _position;
+            set => throw new NotSupportedException();
+        }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
@@ -750,8 +818,11 @@ public class Utf8JsonStreamReaderTests
         }
 
         public override void Flush() => throw new NotSupportedException();
+
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
         public override void SetLength(long value) => throw new NotSupportedException();
+
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
@@ -770,18 +841,21 @@ public class Utf8JsonStreamReaderTests
 
         try
         {
-            reader.Read(stream, (ref Utf8JsonReader r) =>
-            {
-                // Just trying to read should trigger the error when we hit EOF mid-string
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader r) => {
+                    // Just trying to read should trigger the error when we hit EOF mid-string
+                }
+            );
             Assert.Fail("Expected an exception to be thrown for incomplete JSON");
         }
         catch (Exception ex)
         {
             // This is the expected behavior - incomplete JSON should throw an error
-            Assert.IsTrue(ex.Message.Contains("Expected end of string") &&
-                         ex.Message.Contains("reached end of data"),
-                         $"Expected 'Expected end of string' and 'reached end of data' in error message, but got: {ex.Message}");
+            Assert.IsTrue(
+                ex.Message.Contains("Expected end of string") && ex.Message.Contains("reached end of data"),
+                $"Expected 'Expected end of string' and 'reached end of data' in error message, but got: {ex.Message}"
+            );
         }
     }
 
@@ -797,18 +871,21 @@ public class Utf8JsonStreamReaderTests
 
         try
         {
-            await reader.ReadAsync(stream, (ref Utf8JsonReader r) =>
-            {
-                // Just trying to read should trigger the error when we hit EOF mid-string
-            });
+            await reader.ReadAsync(
+                stream,
+                (ref Utf8JsonReader r) => {
+                    // Just trying to read should trigger the error when we hit EOF mid-string
+                }
+            );
             Assert.Fail("Expected an exception to be thrown for incomplete JSON");
         }
         catch (Exception ex)
         {
             // This is the expected behavior - incomplete JSON should throw an error
-            Assert.IsTrue(ex.Message.Contains("Expected end of string") &&
-                         ex.Message.Contains("reached end of data"),
-                         $"Expected 'Expected end of string' and 'reached end of data' in error message, but got: {ex.Message}");
+            Assert.IsTrue(
+                ex.Message.Contains("Expected end of string") && ex.Message.Contains("reached end of data"),
+                $"Expected 'Expected end of string' and 'reached end of data' in error message, but got: {ex.Message}"
+            );
         }
     }
 
@@ -1021,11 +1098,27 @@ public class Utf8JsonStreamReaderTests
 
         for (int i = 0; i < firstResults.Count; i++)
         {
-            Assert.AreEqual(firstResults[i].TokenType, secondResults[i].TokenType, $"Token type mismatch at index {i} between first and second iteration");
-            Assert.AreEqual(firstResults[i].Value, secondResults[i].Value, $"Value mismatch at index {i} between first and second iteration");
+            Assert.AreEqual(
+                firstResults[i].TokenType,
+                secondResults[i].TokenType,
+                $"Token type mismatch at index {i} between first and second iteration"
+            );
+            Assert.AreEqual(
+                firstResults[i].Value,
+                secondResults[i].Value,
+                $"Value mismatch at index {i} between first and second iteration"
+            );
 
-            Assert.AreEqual(firstResults[i].TokenType, thirdResults[i].TokenType, $"Token type mismatch at index {i} between first and third iteration");
-            Assert.AreEqual(firstResults[i].Value, thirdResults[i].Value, $"Value mismatch at index {i} between first and third iteration");
+            Assert.AreEqual(
+                firstResults[i].TokenType,
+                thirdResults[i].TokenType,
+                $"Token type mismatch at index {i} between first and third iteration"
+            );
+            Assert.AreEqual(
+                firstResults[i].Value,
+                thirdResults[i].Value,
+                $"Value mismatch at index {i} between first and third iteration"
+            );
         }
     }
 
@@ -1085,7 +1178,11 @@ public class Utf8JsonStreamReaderTests
                 results.Add(result);
             }
 
-            Assert.HasCount(expectedTokenCount, results, $"Wrong token count with buffer size {bufferSize} in async version");
+            Assert.HasCount(
+                expectedTokenCount,
+                results,
+                $"Wrong token count with buffer size {bufferSize} in async version"
+            );
 
             // Verify exact sequence matches sync version
             Assert.AreEqual(JsonTokenType.StartObject, results[0].TokenType);
@@ -1104,7 +1201,7 @@ public class Utf8JsonStreamReaderTests
             @"{""second"": 2}",
             @"{""third"": 3}",
             @"[""array"", ""test""]",
-            @"""simple_string"""
+            @"""simple_string""",
         };
 
         var expectedCounts = new[] { 4, 4, 4, 4, 1 }; // StartObj, PropName, Number, EndObj for first 3; StartArr, Str, Str, EndArr for 4th; String for 5th
@@ -1122,13 +1219,25 @@ public class Utf8JsonStreamReaderTests
 
             if (i == 0)
             {
-                Assert.IsTrue(values.Contains("first") && values.Contains("1"), "Missing expected values from first JSON");
-                Assert.IsFalse(values.Contains("second") || values.Contains("2"), "Found values from second JSON in first");
+                Assert.IsTrue(
+                    values.Contains("first") && values.Contains("1"),
+                    "Missing expected values from first JSON"
+                );
+                Assert.IsFalse(
+                    values.Contains("second") || values.Contains("2"),
+                    "Found values from second JSON in first"
+                );
             }
             else if (i == 1)
             {
-                Assert.IsTrue(values.Contains("second") && values.Contains("2"), "Missing expected values from second JSON");
-                Assert.IsFalse(values.Contains("first") || values.Contains("1") || values.Contains("third"), "Found values from other JSONs in second");
+                Assert.IsTrue(
+                    values.Contains("second") && values.Contains("2"),
+                    "Missing expected values from second JSON"
+                );
+                Assert.IsFalse(
+                    values.Contains("first") || values.Contains("1") || values.Contains("third"),
+                    "Found values from other JSONs in second"
+                );
             }
             // ... and so on for other JSONs
         }
@@ -1162,7 +1271,11 @@ public class Utf8JsonStreamReaderTests
         }
 
         Assert.HasCount(100, propertyNames, "Wrong number of property names");
-        Assert.AreEqual(100, propertyNames.Distinct().Count(), "Found duplicate property names - indicates token duplication!");
+        Assert.AreEqual(
+            100,
+            propertyNames.Distinct().Count(),
+            "Found duplicate property names - indicates token duplication!"
+        );
     }
 
     [TestMethod]
@@ -1188,7 +1301,10 @@ public class Utf8JsonStreamReaderTests
 
         if (duplicates.Any())
         {
-            var duplicateInfo = string.Join(", ", duplicates.Select(d => $"{d.Key} appears at indices [{string.Join(",", d.Select(x => x.Index))}]"));
+            var duplicateInfo = string.Join(
+                ", ",
+                duplicates.Select(d => $"{d.Key} appears at indices [{string.Join(",", d.Select(x => x.Index))}]")
+            );
             Assert.Fail($"Found duplicate tokens: {duplicateInfo}");
         }
 
@@ -1238,15 +1354,31 @@ public class Utf8JsonStreamReaderTests
             var firstValues = firstResults.Where(r => r.Value != null).Select(r => r.Value!.ToString()).ToList();
             Assert.Contains("first", firstValues, $"Iteration {i / 2}: Missing 'first' in first results");
             Assert.Contains("value1", firstValues, $"Iteration {i / 2}: Missing 'value1' in first results");
-            Assert.DoesNotContain("second", firstValues, $"Iteration {i / 2}: Found 'second' in first results - indicates contamination!");
-            Assert.DoesNotContain("value2", firstValues, $"Iteration {i / 2}: Found 'value2' in first results - indicates contamination!");
+            Assert.DoesNotContain(
+                "second",
+                firstValues,
+                $"Iteration {i / 2}: Found 'second' in first results - indicates contamination!"
+            );
+            Assert.DoesNotContain(
+                "value2",
+                firstValues,
+                $"Iteration {i / 2}: Found 'value2' in first results - indicates contamination!"
+            );
 
             // Second should only contain "second" and "value2"
             var secondValues = secondResults.Where(r => r.Value != null).Select(r => r.Value!.ToString()).ToList();
             Assert.Contains("second", secondValues, $"Iteration {i / 2}: Missing 'second' in second results");
             Assert.Contains("value2", secondValues, $"Iteration {i / 2}: Missing 'value2' in second results");
-            Assert.DoesNotContain("first", secondValues, $"Iteration {i / 2}: Found 'first' in second results - indicates contamination!");
-            Assert.DoesNotContain("value1", secondValues, $"Iteration {i / 2}: Found 'value1' in second results - indicates contamination!");
+            Assert.DoesNotContain(
+                "first",
+                secondValues,
+                $"Iteration {i / 2}: Found 'first' in second results - indicates contamination!"
+            );
+            Assert.DoesNotContain(
+                "value1",
+                secondValues,
+                $"Iteration {i / 2}: Found 'value1' in second results - indicates contamination!"
+            );
         }
     }
 
@@ -1254,12 +1386,7 @@ public class Utf8JsonStreamReaderTests
     public void ToEnumerableMultipleReadersMultipleStreamsDuplicateTest()
     {
         // Test using separate reader instances for separate streams (correct usage pattern)
-        var jsons = new[]
-        {
-            @"{""doc1"": ""val1""}",
-            @"{""doc2"": ""val2""}",
-            @"{""doc3"": ""val3""}"
-        };
+        var jsons = new[] { @"{""doc1"": ""val1""}", @"{""doc2"": ""val2""}", @"{""doc3"": ""val3""}" };
 
         var allResults = new List<List<JsonResult>>();
 
@@ -1287,8 +1414,16 @@ public class Utf8JsonStreamReaderTests
             {
                 if (i != j)
                 {
-                    Assert.DoesNotContain($"doc{j + 1}", values, $"Found doc{j + 1} in results {i} - indicates duplicate/contamination!");
-                    Assert.DoesNotContain($"val{j + 1}", values, $"Found val{j + 1} in results {i} - indicates duplicate/contamination!");
+                    Assert.DoesNotContain(
+                        $"doc{j + 1}",
+                        values,
+                        $"Found doc{j + 1} in results {i} - indicates duplicate/contamination!"
+                    );
+                    Assert.DoesNotContain(
+                        $"val{j + 1}",
+                        values,
+                        $"Found val{j + 1} in results {i} - indicates duplicate/contamination!"
+                    );
                 }
             }
 

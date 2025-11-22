@@ -21,11 +21,14 @@ namespace Tests
             var reader = new Utf8JsonStreamReader(500); // Start smaller than the JSON
             var tokens = new List<JsonTokenType>();
 
-            reader.Read(stream, (ref Utf8JsonReader r) =>
-            {
-                Console.WriteLine($"Token: {r.TokenType}");
-                tokens.Add(r.TokenType);
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader r) =>
+                {
+                    Console.WriteLine($"Token: {r.TokenType}");
+                    tokens.Add(r.TokenType);
+                }
+            );
 
             Assert.HasCount(4, tokens);
         }
@@ -44,11 +47,14 @@ namespace Tests
             var reader = new Utf8JsonStreamReader(10 * 1024 * 1024); // Pre-allocate 10MB like downstream
             var tokens = new List<JsonTokenType>();
 
-            reader.Read(stream, (ref Utf8JsonReader r) =>
-            {
-                Console.WriteLine($"Token: {r.TokenType}");
-                tokens.Add(r.TokenType);
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader r) =>
+                {
+                    Console.WriteLine($"Token: {r.TokenType}");
+                    tokens.Add(r.TokenType);
+                }
+            );
 
             Assert.HasCount(4, tokens);
         }
@@ -67,11 +73,14 @@ namespace Tests
             var reader = new Utf8JsonStreamReader(10 * 1024 * 1024); // Pre-allocate 10MB
             var tokens = new List<JsonTokenType>();
 
-            reader.Read(stream, (ref Utf8JsonReader r) =>
-            {
-                Console.WriteLine($"Token: {r.TokenType}");
-                tokens.Add(r.TokenType);
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader r) =>
+                {
+                    Console.WriteLine($"Token: {r.TokenType}");
+                    tokens.Add(r.TokenType);
+                }
+            );
 
             Assert.HasCount(4, tokens);
         }
@@ -92,7 +101,11 @@ namespace Tests
             public override bool CanSeek => false;
             public override bool CanWrite => false;
             public override long Length => _data.Length;
-            public override long Position { get => _position; set => throw new NotSupportedException(); }
+            public override long Position
+            {
+                get => _position;
+                set => throw new NotSupportedException();
+            }
 
             public override int Read(byte[] buffer, int offset, int count)
             {
@@ -106,8 +119,11 @@ namespace Tests
             }
 
             public override void Flush() => throw new NotSupportedException();
+
             public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
             public override void SetLength(long value) => throw new NotSupportedException();
+
             public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         }
     }

@@ -94,7 +94,10 @@ public sealed partial class Utf8JsonStreamReader
         }
     }
 
-    public async IAsyncEnumerable<JsonResult> ToAsyncEnumerable(Stream stream, [EnumeratorCancellation] CancellationToken token = default)
+    public async IAsyncEnumerable<JsonResult> ToAsyncEnumerable(
+        Stream stream,
+        [EnumeratorCancellation] CancellationToken token = default
+    )
     {
         var results = new List<JsonResult>();
         while (!done)
