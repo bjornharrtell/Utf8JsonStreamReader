@@ -22,7 +22,7 @@ jobs:
           10.0.x
     
     - name: Install CSharpier
-      run: dotnet tool install -g csharpier
+      run: dotnet tool restore
         
     - name: Check formatting
       run: dotnet csharpier check .
