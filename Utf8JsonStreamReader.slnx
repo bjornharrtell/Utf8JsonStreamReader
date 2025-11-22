@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Benchmarks/Benchmarks.csproj" />
+  <Project Path="Tests/Tests.csproj" />
+  <Project Path="Utf8JsonStreamReader/Utf8JsonStreamReader.csproj" />
+</Solution>
