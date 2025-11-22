@@ -18,12 +18,13 @@ public static class Utf8JsonHelpers
         return null;
     }
 
-    public static object? GetValue(ref Utf8JsonReader reader) => reader.TokenType switch
-    {
-        JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => reader.GetString(),
-        JsonTokenType.Number => GetNumber(ref reader),
-        JsonTokenType.True => true,
-        JsonTokenType.False => false,
-        _ => null,
-    };
+    public static object? GetValue(ref Utf8JsonReader reader) =>
+        reader.TokenType switch
+        {
+            JsonTokenType.PropertyName or JsonTokenType.Comment or JsonTokenType.String => reader.GetString(),
+            JsonTokenType.Number => GetNumber(ref reader),
+            JsonTokenType.True => true,
+            JsonTokenType.False => false,
+            _ => null,
+        };
 }

@@ -28,10 +28,13 @@ namespace Tests
             var tokens = new List<JsonTokenType>();
 
             // This should work by auto-growing the buffer
-            reader.Read(stream, (ref Utf8JsonReader r) =>
-            {
-                tokens.Add(r.TokenType);
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader r) =>
+                {
+                    tokens.Add(r.TokenType);
+                }
+            );
 
             // Verify we got the expected tokens
             Assert.HasCount(4, tokens);
@@ -47,7 +50,7 @@ namespace Tests
             // This test verifies that the same scenario works when we pre-allocate
             // a 10MB buffer (as mentioned working in downstream)
 
-            var largePropertyName = new string('x', 5 * 1024 * 1024); // 5MB property name  
+            var largePropertyName = new string('x', 5 * 1024 * 1024); // 5MB property name
             var validJson = $@"{{""{largePropertyName}"": ""value""}}";
             var jsonBytes = Encoding.UTF8.GetBytes(validJson);
 
@@ -59,10 +62,13 @@ namespace Tests
             var tokens = new List<JsonTokenType>();
 
             // This should definitely work
-            reader.Read(stream, (ref Utf8JsonReader r) =>
-            {
-                tokens.Add(r.TokenType);
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader r) =>
+                {
+                    tokens.Add(r.TokenType);
+                }
+            );
 
             // Verify we got the expected tokens
             Assert.HasCount(4, tokens);
@@ -89,7 +95,11 @@ namespace Tests
             public override bool CanSeek => false;
             public override bool CanWrite => false;
             public override long Length => _data.Length;
-            public override long Position { get => _position; set => throw new NotSupportedException(); }
+            public override long Position
+            {
+                get => _position;
+                set => throw new NotSupportedException();
+            }
 
             public override int Read(byte[] buffer, int offset, int count)
             {
@@ -104,8 +114,11 @@ namespace Tests
             }
 
             public override void Flush() => throw new NotSupportedException();
+
             public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
             public override void SetLength(long value) => throw new NotSupportedException();
+
             public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         }
     }

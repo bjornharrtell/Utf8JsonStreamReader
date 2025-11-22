@@ -30,19 +30,17 @@ public class Program
                     NegativeId = -23,
                     TimeStamp = "2012-10-21T00:00:00+05:30",
                     Status = false,
-                    Num = 13434934.23233434
+                    Num = 13434934.23233434,
                 };
-            var containerObject = new
-            {
-                Array = elements
-            };
+            var containerObject = new { Array = elements };
             json = JsonSerializer.Serialize(
                 containerObject,
                 new JsonSerializerOptions()
                 {
                     Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                    WriteIndented = false
-                });
+                    WriteIndented = false,
+                }
+            );
         }
 
         [Benchmark]
@@ -50,11 +48,14 @@ public class Program
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader();
-            reader.Read(stream, (ref Utf8JsonReader reader) =>
-            {
-                _ = reader.TokenType;
-                _ = Utf8JsonHelpers.GetValue(ref reader);
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader reader) =>
+                {
+                    _ = reader.TokenType;
+                    _ = Utf8JsonHelpers.GetValue(ref reader);
+                }
+            );
         }
 
         [Benchmark]
@@ -62,11 +63,14 @@ public class Program
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader();
-            await reader.ReadAsync(stream, (ref Utf8JsonReader reader) =>
-            {
-                _ = reader.TokenType;
-                _ = Utf8JsonHelpers.GetValue(ref reader);
-            });
+            await reader.ReadAsync(
+                stream,
+                (ref Utf8JsonReader reader) =>
+                {
+                    _ = reader.TokenType;
+                    _ = Utf8JsonHelpers.GetValue(ref reader);
+                }
+            );
         }
 
         [Benchmark]
@@ -74,11 +78,14 @@ public class Program
         {
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             var reader = new Utf8JsonStreamReader();
-            reader.Read(stream, (ref Utf8JsonReader reader) =>
-            {
-                _ = reader.TokenType;
-                _ = reader.ValueSpan;
-            });
+            reader.Read(
+                stream,
+                (ref Utf8JsonReader reader) =>
+                {
+                    _ = reader.TokenType;
+                    _ = reader.ValueSpan;
+                }
+            );
         }
 
         [Benchmark]
