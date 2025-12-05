@@ -5,7 +5,6 @@ namespace Wololo.Text.Json;
 
 public static class Utf8JsonHelpers
 {
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static object? GetNumber(ref Utf8JsonReader reader)
     {
         if (reader.TryGetInt32(out int intValue))
@@ -19,7 +18,6 @@ public static class Utf8JsonHelpers
         return null;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object? GetValue(ref Utf8JsonReader reader) =>
         reader.TokenType switch
         {

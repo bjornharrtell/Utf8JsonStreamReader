@@ -27,7 +27,6 @@ public sealed partial class Utf8JsonStreamReader
         buffer = new byte[this.bufferSize];
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CopyRemaining()
     {
         remaining = bufferLength - offset;
@@ -84,7 +83,6 @@ public sealed partial class Utf8JsonStreamReader
             await ReadStreamAsync(stream, onRead, token);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static void AccumulateResults(ref Utf8JsonReader reader, List<JsonResult> results) =>
         results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)));
 
@@ -115,7 +113,6 @@ public sealed partial class Utf8JsonStreamReader
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool ReadBuffer(OnRead onRead)
     {
         bufferLength = readLength + remaining;
