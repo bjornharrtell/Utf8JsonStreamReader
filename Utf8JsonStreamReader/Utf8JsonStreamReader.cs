@@ -27,6 +27,7 @@ public sealed partial class Utf8JsonStreamReader
         buffer = new byte[this.bufferSize];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CopyRemaining()
     {
         remaining = bufferLength - offset;
@@ -45,7 +46,7 @@ public sealed partial class Utf8JsonStreamReader
                 return false;
         }
         var newBuffer = new byte[newBufferSize];
-        buffer[..bufferLength].CopyTo(newBuffer);
+        buffer[..bufferLength].Span.CopyTo(newBuffer);
         buffer = newBuffer;
         bufferSize = newBufferSize;
         return true;
@@ -53,10 +54,11 @@ public sealed partial class Utf8JsonStreamReader
 
     void ReadStream(Stream stream, OnRead onRead)
     {
-        CopyRemaining();
-        readLength = stream.ReadAtLeast(buffer[remaining..].Span, bufferSize - remaining, false);
-        if (!ReadBuffer(onRead))
-            ReadStream(stream, onRead);
+        do
+        {
+            CopyRemaining();
+            readLength = stream.ReadAtLeast(buffer[remaining..].Span, bufferSize - remaining, false);
+        } while (!ReadBuffer(onRead));
     }
 
     public void Read(Stream stream, OnRead onRead)
@@ -67,10 +69,13 @@ public sealed partial class Utf8JsonStreamReader
 
     async ValueTask ReadStreamAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
-        CopyRemaining();
-        readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
-        if (!ReadBuffer(onRead))
-            await ReadStreamAsync(stream, onRead, token);
+        while (true)
+        {
+            CopyRemaining();
+            readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
+            if (ReadBuffer(onRead))
+                break;
+        }
     }
 
     public async ValueTask ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
@@ -79,6 +84,7 @@ public sealed partial class Utf8JsonStreamReader
             await ReadStreamAsync(stream, onRead, token);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static void AccumulateResults(ref Utf8JsonReader reader, List<JsonResult> results) =>
         results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)));
 
@@ -100,17 +106,16 @@ public sealed partial class Utf8JsonStreamReader
     )
     {
         var results = new List<JsonResult>();
-        while (!done)
+        while (!done && !token.IsCancellationRequested)
         {
             await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), token);
             foreach (var item in results)
                 yield return item;
             results.Clear();
-            if (token.IsCancellationRequested)
-                break;
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool ReadBuffer(OnRead onRead)
     {
         bufferLength = readLength + remaining;
@@ -121,15 +126,16 @@ public sealed partial class Utf8JsonStreamReader
             onRead(ref reader);
         jsonReaderState = reader.CurrentState;
         offset = (int)reader.BytesConsumed;
-        if (offset == 0 && !done)
+        if (offset == 0)
         {
-            if (TryGrowBuffer())
+            if (!done)
+            {
+                if (!TryGrowBuffer())
+                    throw new Exception("Failure to parse JSON token buffer is too small");
                 return false;
-            else
-                throw new Exception("Failure to parse JSON token buffer is too small");
-        }
-        if (offset == 0 && done)
+            }
             throw new Exception("Failure to parse JSON token buffer is too small");
+        }
         return true;
     }
 }
