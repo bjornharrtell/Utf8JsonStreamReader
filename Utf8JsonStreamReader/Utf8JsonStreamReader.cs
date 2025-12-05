@@ -128,12 +128,8 @@ public sealed partial class Utf8JsonStreamReader
         offset = (int)reader.BytesConsumed;
         if (offset == 0)
         {
-            if (!done)
-            {
-                if (!TryGrowBuffer())
-                    throw new Exception("Failure to parse JSON token buffer is too small");
+            if (!done && TryGrowBuffer())
                 return false;
-            }
             throw new Exception("Failure to parse JSON token buffer is too small");
         }
         return true;
