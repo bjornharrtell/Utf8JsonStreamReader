@@ -57,7 +57,7 @@ public sealed partial class Utf8JsonStreamReader
         {
             CopyRemaining();
             readLength = stream.ReadAtLeast(buffer[remaining..].Span, bufferSize - remaining, false);
-        } while (!ReadBuffer(onRead));
+        } while (!ReadBuffer(onRead, default));
     }
 
     public void Read(Stream stream, OnRead onRead)
@@ -70,16 +70,18 @@ public sealed partial class Utf8JsonStreamReader
     {
         while (true)
         {
+            if (token.IsCancellationRequested)
+                return;
             CopyRemaining();
             readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
-            if (ReadBuffer(onRead))
+            if (ReadBuffer(onRead, token))
                 break;
         }
     }
 
     public async ValueTask ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
-        while (!done)
+        while (!done && !token.IsCancellationRequested)
             await ReadStreamAsync(stream, onRead, token);
     }
 
@@ -108,26 +110,35 @@ public sealed partial class Utf8JsonStreamReader
         {
             await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), token);
             foreach (var item in results)
+            {
+                if (token.IsCancellationRequested)
+                    yield break;
                 yield return item;
+            }
             results.Clear();
         }
     }
 
-    private bool ReadBuffer(OnRead onRead)
+    private bool ReadBuffer(OnRead onRead, CancellationToken token = default)
     {
         bufferLength = readLength + remaining;
         offset = 0;
         done = bufferLength < bufferSize;
         var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
-        while (reader.Read())
+        while (reader.Read() && !token.IsCancellationRequested)
             onRead(ref reader);
+        if (token.IsCancellationRequested)
+        {
+            done = true;
+            return true;
+        }
         jsonReaderState = reader.CurrentState;
         offset = (int)reader.BytesConsumed;
         if (offset == 0)
         {
             if (!done && TryGrowBuffer())
                 return false;
-            throw new Exception("Failure to parse JSON token buffer is too small");
+            throw new JsonException("Failure to parse JSON token buffer is too small");
         }
         return true;
     }
