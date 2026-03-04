@@ -1539,4 +1539,13 @@ public class Utf8JsonStreamReaderTests(TestContext testContext)
         Assert.AreEqual(JsonTokenType.String, modified.TokenType);
         Assert.AreEqual("hello", modified.Value);
     }
+
+    [TestMethod]
+    public void DisposeIdempotentTest()
+    {
+        // Calling Dispose twice should not throw (covers the !disposed guard)
+        var reader = new Utf8JsonStreamReader();
+        reader.Dispose();
+        reader.Dispose();
+    }
 }
