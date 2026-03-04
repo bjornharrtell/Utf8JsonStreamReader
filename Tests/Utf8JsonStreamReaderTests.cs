@@ -6,7 +6,7 @@ using Wololo.Text.Json;
 namespace Tests;
 
 [TestClass]
-public class Utf8JsonStreamReaderTests
+public class Utf8JsonStreamReaderTests(TestContext testContext)
 {
     static readonly JsonSerializerOptions jsonSerializerOptions = new()
     {
@@ -61,7 +61,7 @@ public class Utf8JsonStreamReaderTests
         int c = 0;
         reader.Read(
             stream,
-            (ref Utf8JsonReader reader) =>
+            (ref reader) =>
             {
                 if (c == 0)
                     Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
@@ -108,7 +108,7 @@ public class Utf8JsonStreamReaderTests
         int c = 0;
         reader.Read(
             stream,
-            (ref Utf8JsonReader reader) =>
+            (ref reader) =>
             {
                 if (c == 0)
                     Assert.AreEqual(JsonTokenType.StartObject, reader.TokenType);
@@ -141,7 +141,7 @@ public class Utf8JsonStreamReaderTests
         int c = 0;
         reader.Read(
             stream,
-            (ref Utf8JsonReader reader) =>
+            (ref reader) =>
             {
                 if (c == 0)
                     Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
@@ -162,7 +162,7 @@ public class Utf8JsonStreamReaderTests
         int c = 0;
         await reader.ReadAsync(
             stream,
-            (ref Utf8JsonReader reader) =>
+            (ref reader) =>
             {
                 if (c == 0)
                     Assert.AreEqual(JsonTokenType.StartArray, reader.TokenType);
@@ -171,7 +171,8 @@ public class Utf8JsonStreamReaderTests
                 else if (c == 2)
                     Assert.AreEqual(JsonTokenType.EndArray, reader.TokenType);
                 c++;
-            }
+            },
+            testContext.CancellationToken
         );
     }
 
@@ -213,7 +214,7 @@ public class Utf8JsonStreamReaderTests
     {
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
         var reader = new Utf8JsonStreamReader();
-        var e = reader.ToAsyncEnumerable(stream);
+        var e = reader.ToAsyncEnumerable(stream, testContext.CancellationToken);
         int c = 0;
         await foreach (var item in e)
         {
@@ -1429,5 +1430,113 @@ public class Utf8JsonStreamReaderTests
 
             Assert.HasCount(4, results, $"Expected 4 tokens for document {i + 1}");
         }
+    }
+
+    [TestMethod]
+    public void GetValueAllBranchesTest()
+    {
+        // true -> True arm, false -> False arm, null token -> default arm,
+        // Int64.MaxValue -> GetNumber Int64 path, 1.5 -> GetNumber Double path
+        var json = $"[true, false, null, {long.MaxValue}, 1.5]";
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader();
+        var results = reader.ToEnumerable(stream).ToList();
+
+        Assert.AreEqual(JsonTokenType.StartArray, results[0].TokenType);
+        Assert.IsTrue((bool)results[1].Value!); // True arm
+        Assert.IsFalse((bool)results[2].Value!); // False arm
+        Assert.IsNull(results[3].Value); // Null token -> default arm (null)
+        Assert.AreEqual(long.MaxValue, results[4].Value); // GetNumber -> Int64 path
+        Assert.AreEqual(1.5, results[5].Value); // GetNumber -> Double path
+        Assert.AreEqual(JsonTokenType.EndArray, results[6].TokenType);
+    }
+
+    [TestMethod]
+    public void TryGrowBufferCapsAtMaxTest()
+    {
+        // bufferSize=7, maxBufferSize=12: 7*2=14 > 12 but 7 < 12 => caps at 12
+        // Property name "abcdefgh" (8 chars) inside {"abcdefgh":1} won't fit in 7 bytes,
+        // forcing TryGrowBuffer to run the capping branch (newBufferSize = maxBufferSize)
+        var json = @"{""abcdefgh"": 1}";
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader(bufferSize: 7, maxBufferSize: 12);
+        var tokens = new List<JsonTokenType>();
+        reader.Read(stream, (ref Utf8JsonReader r) => tokens.Add(r.TokenType));
+
+        Assert.AreEqual(JsonTokenType.StartObject, tokens[0]);
+        Assert.AreEqual(JsonTokenType.PropertyName, tokens[1]);
+        Assert.AreEqual(JsonTokenType.Number, tokens[2]);
+        Assert.AreEqual(JsonTokenType.EndObject, tokens[3]);
+    }
+
+    [TestMethod]
+    public void TryGrowBufferReturnsFalseTest()
+    {
+        // bufferSize == maxBufferSize => TryGrowBuffer returns false => JsonException thrown
+        // Token "abcdefghij" (10 chars) won't fit in a 10-byte buffer (needs >10 with quotes)
+        var json = @"{""abcdefghij"": 1}";
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader(bufferSize: 10, maxBufferSize: 10);
+        try
+        {
+            reader.Read(stream, (ref r) => { });
+            Assert.Fail("Expected JsonException to be thrown");
+        }
+        catch (JsonException)
+        {
+            // expected
+        }
+    }
+
+    [TestMethod]
+    public async Task ReadBufferCancellationTest()
+    {
+        // Cancel the token inside the onRead delegate; this causes ReadBuffer's
+        // token.IsCancellationRequested block (lines 130-133) to fire on next check
+        var json = @"{""a"": 1, ""b"": 2}";
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader();
+        using var cts = new CancellationTokenSource();
+        int count = 0;
+        await reader.ReadAsync(
+            stream,
+            (ref r) =>
+            {
+                count++;
+                cts.Cancel(); // cancel after first token
+            },
+            cts.Token
+        );
+        // At least one token was read before cancellation
+        Assert.IsGreaterThanOrEqualTo(count, 1);
+    }
+
+    [TestMethod]
+    public async Task ToAsyncEnumerableYieldBreakTest()
+    {
+        // Cancel after the first yielded item; the inner
+        // "if (token.IsCancellationRequested) yield break" fires
+        var json = @"[1, 2, 3, 4, 5]";
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var reader = new Utf8JsonStreamReader();
+        using var cts = new CancellationTokenSource();
+        int count = 0;
+        await foreach (var item in reader.ToAsyncEnumerable(stream, cts.Token))
+        {
+            count++;
+            await cts.CancelAsync(); // cancel after first item
+        }
+        Assert.IsGreaterThanOrEqualTo(count, 1);
+    }
+
+    [TestMethod]
+    public void JsonResultInitSettersTest()
+    {
+        // The 'with' expression invokes the init setters on the record struct,
+        // covering set_TokenType and set_Value which the primary constructor bypasses
+        var original = new JsonResult(JsonTokenType.None, null);
+        var modified = original with { TokenType = JsonTokenType.String, Value = "hello" };
+        Assert.AreEqual(JsonTokenType.String, modified.TokenType);
+        Assert.AreEqual("hello", modified.Value);
     }
 }
