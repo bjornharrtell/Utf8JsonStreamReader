@@ -11,11 +11,7 @@ public static class Utf8JsonHelpers
             return intValue;
         if (reader.TryGetInt64(out long longValue))
             return longValue;
-        if (reader.TryGetDouble(out double doubleValue))
-            return doubleValue;
-        if (reader.TryGetInt16(out short shortValue))
-            return shortValue;
-        return null;
+        return reader.GetDouble();
     }
 
     public static object? GetValue(ref Utf8JsonReader reader) =>

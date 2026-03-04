@@ -70,8 +70,6 @@ public sealed partial class Utf8JsonStreamReader
     {
         while (true)
         {
-            if (token.IsCancellationRequested)
-                return;
             CopyRemaining();
             readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
             if (ReadBuffer(onRead, token))
@@ -93,7 +91,7 @@ public sealed partial class Utf8JsonStreamReader
         var results = new List<JsonResult>();
         while (!done)
         {
-            ReadStream(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results));
+            ReadStream(stream, (ref r) => AccumulateResults(ref r, results));
             foreach (var item in results)
                 yield return item;
             results.Clear();
@@ -108,7 +106,7 @@ public sealed partial class Utf8JsonStreamReader
         var results = new List<JsonResult>();
         while (!done && !token.IsCancellationRequested)
         {
-            await ReadStreamAsync(stream, (ref Utf8JsonReader r) => AccumulateResults(ref r, results), token);
+            await ReadStreamAsync(stream, (ref r) => AccumulateResults(ref r, results), token);
             foreach (var item in results)
             {
                 if (token.IsCancellationRequested)
