@@ -34,8 +34,15 @@ jobs:
       run: dotnet build --no-restore
       
     - name: Test
-      run: dotnet test --no-build --verbosity normal
-      
+      run: dotnet test --no-build --verbosity normal --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml --results-directory ./TestResults
+
+    - name: Upload coverage to Coveralls
+      uses: coverallsapp/github-action@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        file: TestResults/coverage.cobertura.xml
+        format: cobertura
+
     - name: Get version from tag
       if: startsWith(github.ref, 'refs/tags/')
       id: get_version
