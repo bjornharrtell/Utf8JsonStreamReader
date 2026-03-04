@@ -1,14 +1,19 @@
+using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace Wololo.Text.Json;
 
-public sealed partial class Utf8JsonStreamReader
+public sealed partial class Utf8JsonStreamReader(
+    int bufferSize = Utf8JsonStreamReader.DefaultBufferSize,
+    int maxBufferSize = Utf8JsonStreamReader.DefaultMaxBufferSize
+) : IDisposable
 {
     bool done = false;
-    Memory<byte> buffer;
-    int bufferSize;
-    readonly int maxBufferSize;
+    bool disposed = false;
+    byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+    int bufferSize = bufferSize;
+    readonly int maxBufferSize = maxBufferSize;
     int bufferLength = 0;
     int offset = 0;
     int remaining = 0;
@@ -20,18 +25,20 @@ public sealed partial class Utf8JsonStreamReader
 
     public delegate void OnRead(ref Utf8JsonReader reader);
 
-    public Utf8JsonStreamReader(int bufferSize = DefaultBufferSize, int maxBufferSize = DefaultMaxBufferSize)
+    public void Dispose()
     {
-        this.bufferSize = bufferSize;
-        this.maxBufferSize = maxBufferSize;
-        buffer = new byte[this.bufferSize];
+        if (!disposed)
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+            disposed = true;
+        }
     }
 
     void CopyRemaining()
     {
         remaining = bufferLength - offset;
         if (remaining > 0)
-            buffer[offset..].CopyTo(buffer);
+            buffer.AsSpan(offset, remaining).CopyTo(buffer);
     }
 
     bool TryGrowBuffer()
@@ -44,8 +51,9 @@ public sealed partial class Utf8JsonStreamReader
             else
                 return false;
         }
-        var newBuffer = new byte[newBufferSize];
-        buffer[..bufferLength].Span.CopyTo(newBuffer);
+        var newBuffer = ArrayPool<byte>.Shared.Rent(newBufferSize);
+        buffer.AsSpan(0, bufferLength).CopyTo(newBuffer);
+        ArrayPool<byte>.Shared.Return(buffer);
         buffer = newBuffer;
         bufferSize = newBufferSize;
         return true;
@@ -56,7 +64,11 @@ public sealed partial class Utf8JsonStreamReader
         do
         {
             CopyRemaining();
-            readLength = stream.ReadAtLeast(buffer[remaining..].Span, bufferSize - remaining, false);
+            readLength = stream.ReadAtLeast(
+                buffer.AsSpan(remaining, bufferSize - remaining),
+                bufferSize - remaining,
+                false
+            );
         } while (!ReadBuffer(onRead, default));
     }
 
@@ -71,7 +83,12 @@ public sealed partial class Utf8JsonStreamReader
         while (true)
         {
             CopyRemaining();
-            readLength = await stream.ReadAtLeastAsync(buffer[remaining..], bufferSize - remaining, false, token);
+            readLength = await stream.ReadAtLeastAsync(
+                buffer.AsMemory(remaining, bufferSize - remaining),
+                bufferSize - remaining,
+                false,
+                token
+            );
             if (ReadBuffer(onRead, token))
                 break;
         }
@@ -89,9 +106,10 @@ public sealed partial class Utf8JsonStreamReader
     public IEnumerable<JsonResult> ToEnumerable(Stream stream)
     {
         var results = new List<JsonResult>();
+        void onRead(ref Utf8JsonReader r) => AccumulateResults(ref r, results);
         while (!done)
         {
-            ReadStream(stream, (ref r) => AccumulateResults(ref r, results));
+            ReadStream(stream, onRead);
             foreach (var item in results)
                 yield return item;
             results.Clear();
@@ -104,9 +122,10 @@ public sealed partial class Utf8JsonStreamReader
     )
     {
         var results = new List<JsonResult>();
+        void onRead(ref Utf8JsonReader r) => AccumulateResults(ref r, results);
         while (!done && !token.IsCancellationRequested)
         {
-            await ReadStreamAsync(stream, (ref r) => AccumulateResults(ref r, results), token);
+            await ReadStreamAsync(stream, onRead, token);
             foreach (var item in results)
             {
                 if (token.IsCancellationRequested)
@@ -122,7 +141,7 @@ public sealed partial class Utf8JsonStreamReader
         bufferLength = readLength + remaining;
         offset = 0;
         done = bufferLength < bufferSize;
-        var reader = new Utf8JsonReader(buffer[offset..bufferLength].Span, done, jsonReaderState);
+        var reader = new Utf8JsonReader(buffer.AsSpan(0, bufferLength), done, jsonReaderState);
         while (reader.Read() && !token.IsCancellationRequested)
             onRead(ref reader);
         if (token.IsCancellationRequested)
