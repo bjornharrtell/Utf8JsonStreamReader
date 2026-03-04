@@ -1,5 +1,8 @@
 # Utf8JsonStreamReader
 
+![NuGet Version](https://img.shields.io/nuget/v/Utf8StreamReader)
+[![Coverage Status](https://coveralls.io/repos/github/bjornharrtell/Utf8JsonStreamReader/badge.svg?branch=main)](https://coveralls.io/github/bjornharrtell/Utf8JsonStreamReader?branch=main)
+
 A streaming JSON parser based on `System.Text.Json.Utf8JsonReader`.
 
 ## Performance
