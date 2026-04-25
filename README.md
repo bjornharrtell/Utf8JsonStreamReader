@@ -14,19 +14,19 @@ Results produced by:
 ### .NET 10
 
 ```sh
-BenchmarkDotNet v0.15.8, Linux Ubuntu 24.04.4 LTS (Noble Numbat)
+BenchmarkDotNet v0.15.8, Linux Ubuntu 26.04 (Resolute Raccoon)
 AMD Ryzen 7 PRO 8840U w/ Radeon 780M Graphics 1.10GHz, 1 CPU, 16 logical and 8 physical cores
-.NET SDK 10.0.103
-  [Host]     : .NET 10.0.3 (10.0.3, 10.0.326.7603), X64 RyuJIT x86-64-v4
-  DefaultJob : .NET 10.0.3 (10.0.3, 10.0.326.7603), X64 RyuJIT x86-64-v4
+.NET SDK 10.0.203
+  [Host]     : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4
+  DefaultJob : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4
 
 
 | Method                                        | Objects | Mean     | Error    | StdDev   |
 |---------------------------------------------- |-------- |---------:|---------:|---------:|
-| TraverseUtf8JsonStreamReader                  | 100000  | 27.38 ms | 0.120 ms | 0.112 ms |
-| TraverseUtf8JsonStreamReaderAsync             | 100000  | 27.09 ms | 0.186 ms | 0.174 ms |
-| TraverseUtf8JsonStreamReaderRawValue          | 100000  | 13.91 ms | 0.080 ms | 0.075 ms |
-| TraverseUtf8JsonStreamReaderToEnumerable      | 100000  | 35.33 ms | 0.116 ms | 0.138 ms |
-| TraverseUtf8JsonStreamReaderToAsyncEnumerable | 100000  | 48.09 ms | 0.292 ms | 0.273 ms |
-| TraverseNewtonsoftJsonTextReader              | 100000  | 45.86 ms | 0.206 ms | 0.183 ms 
+| TraverseUtf8JsonStreamReader                  | 100000  | 26.77 ms | 0.118 ms | 0.110 ms |
+| TraverseUtf8JsonStreamReaderAsync             | 100000  | 26.69 ms | 0.116 ms | 0.097 ms |
+| TraverseUtf8JsonStreamReaderRawValue          | 100000  | 13.29 ms | 0.040 ms | 0.033 ms |
+| TraverseUtf8JsonStreamReaderToEnumerable      | 100000  | 35.40 ms | 0.240 ms | 0.224 ms |
+| TraverseUtf8JsonStreamReaderToAsyncEnumerable | 100000  | 46.06 ms | 0.329 ms | 0.308 ms |
+| TraverseNewtonsoftJsonTextReader              | 100000  | 44.31 ms | 0.283 ms | 0.265 ms |
 ```
