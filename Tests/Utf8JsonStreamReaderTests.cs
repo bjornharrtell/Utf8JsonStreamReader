@@ -1541,6 +1541,68 @@ public class Utf8JsonStreamReaderTests(TestContext testContext)
     }
 
     [TestMethod]
+    public void ReadAfterDisposeThrowsTest()
+    {
+        var reader = new Utf8JsonStreamReader();
+        reader.Dispose();
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
+        Assert.ThrowsExactly<ObjectDisposedException>(() => reader.Read(stream, (ref Utf8JsonReader r) => { }));
+        Assert.ThrowsExactly<ObjectDisposedException>(() => reader.ToEnumerable(stream).ToList());
+    }
+
+    [TestMethod]
+    public async Task ReadAsyncAfterDisposeThrowsTest()
+    {
+        var reader = new Utf8JsonStreamReader();
+        reader.Dispose();
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonArray));
+        await Assert.ThrowsExactlyAsync<ObjectDisposedException>(async () =>
+            await reader.ReadAsync(stream, (ref Utf8JsonReader r) => { })
+        );
+        await Assert.ThrowsExactlyAsync<ObjectDisposedException>(async () =>
+        {
+            await foreach (var _ in reader.ToAsyncEnumerable(stream)) { }
+        });
+    }
+
+    [TestMethod]
+    public void ReuseInstanceForSecondStreamTest()
+    {
+        using var reader = new Utf8JsonStreamReader(4);
+        var first = reader.ToEnumerable(new MemoryStream(Encoding.UTF8.GetBytes(jsonNested))).ToList();
+        var second = reader.ToEnumerable(new MemoryStream(Encoding.UTF8.GetBytes(jsonNested))).ToList();
+        Assert.IsNotEmpty(first);
+        CollectionAssert.AreEqual(first, second);
+
+        int count = 0;
+        reader.Read(new MemoryStream(Encoding.UTF8.GetBytes(jsonArray)), (ref Utf8JsonReader r) => count++);
+        Assert.AreEqual(3, count);
+    }
+
+    [TestMethod]
+    public async Task ReuseInstanceAsyncTest()
+    {
+        using var reader = new Utf8JsonStreamReader();
+        for (int i = 0; i < 2; i++)
+        {
+            int count = 0;
+            await reader.ReadAsync(
+                new MemoryStream(Encoding.UTF8.GetBytes(jsonArray)),
+                (ref Utf8JsonReader r) => count++,
+                testContext.CancellationToken
+            );
+            Assert.AreEqual(3, count);
+        }
+    }
+
+    [TestMethod]
+    public void InvalidBufferSizeThrowsTest()
+    {
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new Utf8JsonStreamReader(0));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new Utf8JsonStreamReader(-1));
+    }
+
+    [TestMethod]
     public void DisposeIdempotentTest()
     {
         // Calling Dispose twice should not throw (covers the !disposed guard)
