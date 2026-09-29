@@ -11,7 +11,7 @@ public sealed partial class Utf8JsonStreamReader(
 {
     bool done = false;
     bool disposed = false;
-    byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+    byte[] buffer = ArrayPool<byte>.Shared.Rent(ValidateBufferSize(bufferSize));
     int bufferSize = bufferSize;
     readonly int maxBufferSize = maxBufferSize;
     int bufferLength = 0;
@@ -25,11 +25,34 @@ public sealed partial class Utf8JsonStreamReader(
 
     public delegate void OnRead(ref Utf8JsonReader reader);
 
+    static int ValidateBufferSize(int bufferSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(bufferSize);
+        return bufferSize;
+    }
+
+    // Prepares for a new read: guards against use after dispose and resets state so an
+    // instance can be reused for another stream once a previous read has completed.
+    void BeginRead()
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        if (done)
+        {
+            done = false;
+            bufferLength = 0;
+            offset = 0;
+            remaining = 0;
+            readLength = 0;
+            jsonReaderState = new();
+        }
+    }
+
     public void Dispose()
     {
         if (!disposed)
         {
             ArrayPool<byte>.Shared.Return(buffer);
+            buffer = [];
             disposed = true;
         }
     }
@@ -43,7 +66,7 @@ public sealed partial class Utf8JsonStreamReader(
 
     bool TryGrowBuffer()
     {
-        var newBufferSize = bufferSize * 2;
+        var newBufferSize = (int)Math.Min((long)bufferSize * 2, int.MaxValue);
         if (newBufferSize > maxBufferSize)
         {
             if (bufferSize < maxBufferSize)
@@ -74,6 +97,7 @@ public sealed partial class Utf8JsonStreamReader(
 
     public void Read(Stream stream, OnRead onRead)
     {
+        BeginRead();
         while (!done)
             ReadStream(stream, onRead);
     }
@@ -96,6 +120,7 @@ public sealed partial class Utf8JsonStreamReader(
 
     public async ValueTask ReadAsync(Stream stream, OnRead onRead, CancellationToken token = default)
     {
+        BeginRead();
         while (!done && !token.IsCancellationRequested)
             await ReadStreamAsync(stream, onRead, token);
     }
@@ -105,6 +130,7 @@ public sealed partial class Utf8JsonStreamReader(
 
     public IEnumerable<JsonResult> ToEnumerable(Stream stream)
     {
+        BeginRead();
         var results = new List<JsonResult>();
         void onRead(ref Utf8JsonReader r) => AccumulateResults(ref r, results);
         while (!done)
@@ -121,6 +147,7 @@ public sealed partial class Utf8JsonStreamReader(
         [EnumeratorCancellation] CancellationToken token = default
     )
     {
+        BeginRead();
         var results = new List<JsonResult>();
         void onRead(ref Utf8JsonReader r) => AccumulateResults(ref r, results);
         while (!done && !token.IsCancellationRequested)
