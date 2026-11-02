@@ -125,6 +125,79 @@ public class Program
         }
     }
 
+    public class NestedRecordsBenchmark
+    {
+        byte[] bytes;
+
+        [Params(50000)]
+        public int Records;
+
+        [GlobalSetup]
+        public void Setup()
+        {
+            var elements = new object[Records];
+            for (int i = 0; i < elements.Length; i++)
+                elements[i] = new
+                {
+                    Id = i,
+                    Name = "Record " + i,
+                    Status = false,
+                    Geometry = new
+                    {
+                        Type = "Point",
+                        Coordinates = new[] { 12.5, 55.7 },
+                    },
+                    Tags = new[] { "a", "b", "c" },
+                };
+            bytes = JsonSerializer.SerializeToUtf8Bytes(
+                elements,
+                new JsonSerializerOptions { WriteIndented = false }
+            );
+        }
+
+        [Benchmark(Baseline = true)]
+        public int TokensInternNames()
+        {
+            var reader = new Utf8JsonStreamReader();
+            int n = 0;
+            foreach (var item in reader.ToEnumerable(new MemoryStream(bytes)))
+                n += item.Value is string s ? s.Length : 1;
+            return n;
+        }
+
+        [Benchmark]
+        public int TokensNoInternNames()
+        {
+            var reader = new Utf8JsonStreamReader { InternPropertyNames = false };
+            int n = 0;
+            foreach (var item in reader.ToEnumerable(new MemoryStream(bytes)))
+                n += item.Value is string s ? s.Length : 1;
+            return n;
+        }
+
+        [Benchmark]
+        public int RawSubtrees()
+        {
+            var reader = new Utf8JsonStreamReader();
+            int n = 0;
+            foreach (var item in reader.ToEnumerable(new MemoryStream(bytes), rawFromDepth: 2))
+                n += item.Value is string s ? s.Length : 1;
+            return n;
+        }
+
+        [Benchmark]
+        public async Task<int> RawSubtreesAsync()
+        {
+            var reader = new Utf8JsonStreamReader();
+            int n = 0;
+            await foreach (
+                var item in reader.ToAsyncEnumerable(new MemoryStream(bytes), rawFromDepth: 2)
+            )
+                n += item.Value is string s ? s.Length : 1;
+            return n;
+        }
+    }
+
     public static void Main(string[] args)
     {
         var config = DefaultConfig.Instance;
