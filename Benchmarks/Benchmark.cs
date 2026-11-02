@@ -142,17 +142,10 @@ public class Program
                     Id = i,
                     Name = "Record " + i,
                     Status = false,
-                    Geometry = new
-                    {
-                        Type = "Point",
-                        Coordinates = new[] { 12.5, 55.7 },
-                    },
+                    Geometry = new { Type = "Point", Coordinates = new[] { 12.5, 55.7 } },
                     Tags = new[] { "a", "b", "c" },
                 };
-            bytes = JsonSerializer.SerializeToUtf8Bytes(
-                elements,
-                new JsonSerializerOptions { WriteIndented = false }
-            );
+            bytes = JsonSerializer.SerializeToUtf8Bytes(elements, new JsonSerializerOptions { WriteIndented = false });
         }
 
         [Benchmark(Baseline = true)]
@@ -190,9 +183,7 @@ public class Program
         {
             var reader = new Utf8JsonStreamReader();
             int n = 0;
-            await foreach (
-                var item in reader.ToAsyncEnumerable(new MemoryStream(bytes), rawFromDepth: 2)
-            )
+            await foreach (var item in reader.ToAsyncEnumerable(new MemoryStream(bytes), rawFromDepth: 2))
                 n += item.Value is string s ? s.Length : 1;
             return n;
         }

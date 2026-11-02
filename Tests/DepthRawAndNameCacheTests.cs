@@ -10,8 +10,7 @@ public class DepthRawAndNameCacheTests
     static MemoryStream Utf8(string json) => new(Encoding.UTF8.GetBytes(json));
 
     // Mimics a DAF file: a root array of records that have scalar and nested properties
-    const string Records =
-        """
+    const string Records = """
         [
           { "id": 1, "name": "a\u00e6", "geo": { "type": "Point", "coordinates": [1.5, 2, [3]] }, "tags": ["x", {"y": null}], "n": null },
           { "id": 2, "name": "b", "geo": {}, "tags": [], "n": true }
@@ -30,9 +29,15 @@ public class DepthRawAndNameCacheTests
     public void DepthMatchesUtf8JsonReaderCurrentDepth()
     {
         var expected = new List<(JsonTokenType, int)>();
-        new Utf8JsonStreamReader().Read(Utf8(Records), (ref Utf8JsonReader r) => expected.Add((r.TokenType, r.CurrentDepth)));
+        new Utf8JsonStreamReader().Read(
+            Utf8(Records),
+            (ref Utf8JsonReader r) => expected.Add((r.TokenType, r.CurrentDepth))
+        );
 
-        var actual = new Utf8JsonStreamReader().ToEnumerable(Utf8(Records)).Select(r => (r.TokenType, r.Depth)).ToList();
+        var actual = new Utf8JsonStreamReader()
+            .ToEnumerable(Utf8(Records))
+            .Select(r => (r.TokenType, r.Depth))
+            .ToList();
 
         CollectionAssert.AreEqual(expected, actual);
         Assert.AreEqual(0, actual[0].Item2); // root StartArray
@@ -43,7 +48,10 @@ public class DepthRawAndNameCacheTests
     [TestMethod]
     public async Task DepthAsyncMatchesSync()
     {
-        var sync = new Utf8JsonStreamReader(16).ToEnumerable(Utf8(Records)).Select(r => (r.TokenType, r.Depth)).ToList();
+        var sync = new Utf8JsonStreamReader(16)
+            .ToEnumerable(Utf8(Records))
+            .Select(r => (r.TokenType, r.Depth))
+            .ToList();
         var async = new List<(JsonTokenType, int)>();
         await foreach (var r in new Utf8JsonStreamReader(16).ToAsyncEnumerable(Utf8(Records)))
             async.Add((r.TokenType, r.Depth));
@@ -61,8 +69,12 @@ public class DepthRawAndNameCacheTests
 
     // ---- Raw subtrees ----
 
-    static List<JsonResult> ReadRaw(string json, int rawFromDepth, int bufferSize = 32 * 1024, int maxBufferSize = 1024 * 1024 * 1024) =>
-        [.. new Utf8JsonStreamReader(bufferSize, maxBufferSize).ToEnumerable(Utf8(json), rawFromDepth)];
+    static List<JsonResult> ReadRaw(
+        string json,
+        int rawFromDepth,
+        int bufferSize = 32 * 1024,
+        int maxBufferSize = 1024 * 1024 * 1024
+    ) => [.. new Utf8JsonStreamReader(bufferSize, maxBufferSize).ToEnumerable(Utf8(json), rawFromDepth)];
 
     [TestMethod]
     public void RawSubtreesAreReturnedAsSingleResults()
@@ -70,7 +82,10 @@ public class DepthRawAndNameCacheTests
         var results = ReadRaw(Records, 2);
 
         var raws = results.Where(r => r.IsRaw).ToList();
-        Assert.HasCount(4, raws.Where(r => r.Value is string s && s.Length > 0 && (s[0] == '{' || s[0] == '[')).ToList());
+        Assert.HasCount(
+            4,
+            raws.Where(r => r.Value is string s && s.Length > 0 && (s[0] == '{' || s[0] == '[')).ToList()
+        );
         Assert.AreEqual(Records_Raw(0, "geo"), raws[0].Value);
         Assert.AreEqual(Records_Raw(0, "tags"), raws[1].Value);
         Assert.AreEqual(Records_Raw(1, "geo"), raws[2].Value);
@@ -78,7 +93,9 @@ public class DepthRawAndNameCacheTests
         Assert.IsTrue(raws.All(r => r.Depth == 2));
 
         // Nothing from inside the raw values is produced
-        Assert.IsFalse(results.Any(r => r.TokenType == JsonTokenType.PropertyName && r.Value is "type" or "coordinates" or "y"));
+        Assert.IsFalse(
+            results.Any(r => r.TokenType == JsonTokenType.PropertyName && r.Value is "type" or "coordinates" or "y")
+        );
         // Everything else is as before: root array, two records
         Assert.AreEqual(1, results.Count(r => r.TokenType == JsonTokenType.StartArray && !r.IsRaw));
         Assert.AreEqual(2, results.Count(r => r.TokenType == JsonTokenType.StartObject && r.Depth == 1));
@@ -122,7 +139,9 @@ public class DepthRawAndNameCacheTests
         {
             if (i > 0)
                 sb.Append(',');
-            sb.Append($$$"""{"id":{{{i}}},"geo":{"type":"Point","coordinates":[{{{i}}}.5,{{{i}}}],"deep":{"a":[{"b":[{{{i}}}]}]}},"name":"n{{{i}}}","list":[{{{string.Join(",", Enumerable.Range(0, i % 17))}}}]}""");
+            sb.Append(
+                $$$"""{"id":{{{i}}},"geo":{"type":"Point","coordinates":[{{{i}}}.5,{{{i}}}],"deep":{"a":[{"b":[{{{i}}}]}]}},"name":"n{{{i}}}","list":[{{{string.Join(",", Enumerable.Range(0, i % 17))}}}]}"""
+            );
         }
         sb.Append(']');
         var json = sb.ToString();
@@ -187,7 +206,9 @@ public class DepthRawAndNameCacheTests
     [TestMethod]
     public void NegativeRawFromDepthThrows()
     {
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new Utf8JsonStreamReader().ToEnumerable(Utf8("[]"), -1).ToList());
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            new Utf8JsonStreamReader().ToEnumerable(Utf8("[]"), -1).ToList()
+        );
     }
 
     [TestMethod]
