@@ -5,6 +5,29 @@
 
 A streaming JSON parser based on `System.Text.Json.Utf8JsonReader`.
 
+## Depth
+
+Each `JsonResult` has a `Depth` (from `Utf8JsonReader.CurrentDepth`). Start and End tokens are at the depth of their container; property names and values are at the depth of the object or array that holds them.
+
+## Raw subtrees
+
+`ToEnumerable(stream, rawFromDepth)` and `ToAsyncEnumerable(stream, rawFromDepth, cancellationToken)` return any object or array whose Start token is at `Depth >= rawFromDepth` as a single result. Its `Value` is the exact raw JSON text (a `string`) and `IsRaw` is `true`. No inner tokens or End token are produced.
+
+For a root array of records, nested values are at depth 2. For `{"Array":[...]}` they are at depth 3.
+
+```csharp
+await foreach (var r in reader.ToAsyncEnumerable(stream, rawFromDepth: 2))
+{
+    if (r.IsRaw) { var json = (string)r.Value!; /* e.g. store in a jsonb column */ }
+}
+```
+
+A subtree must fit in the buffer. The buffer grows as needed up to `maxBufferSize`, after which a `JsonException` is thrown. A negative `rawFromDepth` throws `ArgumentOutOfRangeException`. Raw mode keeps a copy of the reader per token, which is safe with the default `MaxDepth` of 64.
+
+## Property name cache
+
+`InternPropertyNames` (default `true`) reuses `string` instances for repeated property names, so a stream of similar records does not allocate a new string per name. The cache holds at most 1024 names of at most 256 bytes, and escaped names are not cached. Set it to `false` to turn it off.
+
 ## Performance
 
 Results produced by:

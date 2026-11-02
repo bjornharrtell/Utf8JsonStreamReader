@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 
 namespace Wololo.Text.Json;
@@ -22,6 +23,19 @@ public sealed partial class Utf8JsonStreamReader(
 
     const int DefaultBufferSize = 1024 * 32;
     const int DefaultMaxBufferSize = 1024 * 1024 * 1024;
+    const int NoRaw = int.MaxValue;
+    const int MaxCachedNames = 1024;
+    const int MaxCachedNameBytes = 256;
+
+    readonly Dictionary<ulong, (byte[] Bytes, string Name)> nameCache = [];
+
+    /// <summary>
+    /// When true (default) the strings produced for property names are cached, so a name that is repeated for every
+    /// object in a large array is only allocated once. The cache is bounded (at most 1024 names of at most 256 bytes)
+    /// and does not change the values produced. Only affects <see cref="ToEnumerable(Stream)"/> and
+    /// <see cref="ToAsyncEnumerable(Stream, CancellationToken)"/> (and their <c>rawFromDepth</c> overloads).
+    /// </summary>
+    public bool InternPropertyNames { get; set; } = true;
 
     public delegate void OnRead(ref Utf8JsonReader reader);
 
@@ -82,7 +96,7 @@ public sealed partial class Utf8JsonStreamReader(
         return true;
     }
 
-    void ReadStream(Stream stream, OnRead onRead)
+    void ReadStream(Stream stream, OnRead onRead, List<JsonResult>? rawSink = null, int rawFromDepth = NoRaw)
     {
         do
         {
@@ -92,7 +106,7 @@ public sealed partial class Utf8JsonStreamReader(
                 bufferSize - remaining,
                 false
             );
-        } while (!ReadBuffer(onRead, default));
+        } while (!ReadBuffer(onRead, rawSink, rawFromDepth, default));
     }
 
     public void Read(Stream stream, OnRead onRead)
@@ -102,7 +116,13 @@ public sealed partial class Utf8JsonStreamReader(
             ReadStream(stream, onRead);
     }
 
-    async ValueTask ReadStreamAsync(Stream stream, OnRead onRead, CancellationToken token = default)
+    async ValueTask ReadStreamAsync(
+        Stream stream,
+        OnRead onRead,
+        List<JsonResult>? rawSink = null,
+        int rawFromDepth = NoRaw,
+        CancellationToken token = default
+    )
     {
         while (true)
         {
@@ -113,7 +133,7 @@ public sealed partial class Utf8JsonStreamReader(
                 false,
                 token
             );
-            if (ReadBuffer(onRead, token))
+            if (ReadBuffer(onRead, rawSink, rawFromDepth, token))
                 break;
         }
     }
@@ -122,37 +142,91 @@ public sealed partial class Utf8JsonStreamReader(
     {
         BeginRead();
         while (!done && !token.IsCancellationRequested)
-            await ReadStreamAsync(stream, onRead, token);
+            await ReadStreamAsync(stream, onRead, token: token);
     }
 
-    static void AccumulateResults(ref Utf8JsonReader reader, List<JsonResult> results) =>
-        results.Add(new JsonResult(reader.TokenType, Utf8JsonHelpers.GetValue(ref reader)));
-
-    public IEnumerable<JsonResult> ToEnumerable(Stream stream)
+    static ulong HashName(ReadOnlySpan<byte> name)
     {
+        // FNV-1a
+        ulong hash = 14695981039346656037UL;
+        foreach (var b in name)
+            hash = (hash ^ b) * 1099511628211UL;
+        return hash;
+    }
+
+    string GetPropertyName(ref Utf8JsonReader reader)
+    {
+        // Escaped or multi-segment names are rare, they are simply not cached
+        if (!InternPropertyNames || reader.ValueIsEscaped || reader.HasValueSequence)
+            return reader.GetString()!;
+        var span = reader.ValueSpan;
+        if (span.Length > MaxCachedNameBytes)
+            return reader.GetString()!;
+        var hash = HashName(span);
+        if (nameCache.TryGetValue(hash, out var entry))
+            return span.SequenceEqual(entry.Bytes) ? entry.Name : reader.GetString()!; // else hash collision
+        var name = reader.GetString()!;
+        if (nameCache.Count < MaxCachedNames)
+            nameCache[hash] = (span.ToArray(), name);
+        return name;
+    }
+
+    void AccumulateResults(ref Utf8JsonReader reader, List<JsonResult> results)
+    {
+        var value =
+            reader.TokenType == JsonTokenType.PropertyName
+                ? GetPropertyName(ref reader)
+                : Utf8JsonHelpers.GetValue(ref reader);
+        results.Add(new JsonResult(reader.TokenType, value) { Depth = reader.CurrentDepth });
+    }
+
+    static void ValidateRawFromDepth(int rawFromDepth) => ArgumentOutOfRangeException.ThrowIfNegative(rawFromDepth);
+
+    public IEnumerable<JsonResult> ToEnumerable(Stream stream) => ToEnumerable(stream, NoRaw);
+
+    /// <summary>
+    /// Like <see cref="ToEnumerable(Stream)"/> but every object or array starting at <paramref name="rawFromDepth"/>
+    /// or deeper (see <see cref="JsonResult.Depth"/>) is returned as a single result holding its complete raw JSON text
+    /// (see <see cref="JsonResult.IsRaw"/>) instead of one result per token. For example, with a root array of
+    /// records, <c>rawFromDepth: 2</c> returns each record property that is an object or array as raw JSON.
+    /// A raw value must fit in the maximum buffer size.
+    /// </summary>
+    public IEnumerable<JsonResult> ToEnumerable(Stream stream, int rawFromDepth)
+    {
+        ValidateRawFromDepth(rawFromDepth);
         BeginRead();
         var results = new List<JsonResult>();
         void onRead(ref Utf8JsonReader r) => AccumulateResults(ref r, results);
+        var rawSink = rawFromDepth == NoRaw ? null : results;
         while (!done)
         {
-            ReadStream(stream, onRead);
+            ReadStream(stream, onRead, rawSink, rawFromDepth);
             foreach (var item in results)
                 yield return item;
             results.Clear();
         }
     }
 
+    public IAsyncEnumerable<JsonResult> ToAsyncEnumerable(Stream stream, CancellationToken token = default) =>
+        ToAsyncEnumerable(stream, NoRaw, token);
+
+    /// <summary>
+    /// Async version of <see cref="ToEnumerable(Stream, int)"/>.
+    /// </summary>
     public async IAsyncEnumerable<JsonResult> ToAsyncEnumerable(
         Stream stream,
+        int rawFromDepth,
         [EnumeratorCancellation] CancellationToken token = default
     )
     {
+        ValidateRawFromDepth(rawFromDepth);
         BeginRead();
         var results = new List<JsonResult>();
         void onRead(ref Utf8JsonReader r) => AccumulateResults(ref r, results);
+        var rawSink = rawFromDepth == NoRaw ? null : results;
         while (!done && !token.IsCancellationRequested)
         {
-            await ReadStreamAsync(stream, onRead, token);
+            await ReadStreamAsync(stream, onRead, rawSink, rawFromDepth, token);
             foreach (var item in results)
             {
                 if (token.IsCancellationRequested)
@@ -163,14 +237,52 @@ public sealed partial class Utf8JsonStreamReader(
         }
     }
 
-    private bool ReadBuffer(OnRead onRead, CancellationToken token = default)
+    private bool ReadBuffer(
+        OnRead onRead,
+        List<JsonResult>? rawSink,
+        int rawFromDepth,
+        CancellationToken token = default
+    )
     {
         bufferLength = readLength + remaining;
         offset = 0;
         done = bufferLength < bufferSize;
         var reader = new Utf8JsonReader(buffer.AsSpan(0, bufferLength), done, jsonReaderState);
-        while (reader.Read() && !token.IsCancellationRequested)
-            onRead(ref reader);
+        if (rawSink is null)
+        {
+            while (reader.Read() && !token.IsCancellationRequested)
+                onRead(ref reader);
+        }
+        else
+        {
+            while (!token.IsCancellationRequested)
+            {
+                // Checkpoint, so that a subtree that continues in the next read can be retried from its start token
+                var before = reader;
+                if (!reader.Read())
+                    break;
+                if (
+                    reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray
+                    && reader.CurrentDepth >= rawFromDepth
+                )
+                {
+                    var skipped = reader;
+                    if (skipped.TrySkip())
+                    {
+                        var start = (int)reader.TokenStartIndex;
+                        var raw = Encoding.UTF8.GetString(buffer.AsSpan(start, (int)skipped.BytesConsumed - start));
+                        rawSink.Add(new JsonResult(reader.TokenType, raw) { Depth = reader.CurrentDepth });
+                        reader = skipped;
+                        continue;
+                    }
+                    // Not all of it is buffered yet: rewind to before the start token. When that makes no progress
+                    // at all the buffer is grown below, so it will eventually fit (or fail at maxBufferSize).
+                    reader = before;
+                    break;
+                }
+                onRead(ref reader);
+            }
+        }
         if (token.IsCancellationRequested)
         {
             done = true;
